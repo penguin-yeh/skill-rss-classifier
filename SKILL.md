@@ -357,6 +357,18 @@ article's title as a clickable link to its real `link` — that's the whole
 point of carrying the link through the pipeline. Never invent a URL for an
 article that didn't have one.
 
+**If delivering as an HTML email, every styled element must use an inline
+`style="..."` attribute — never a `<style>` block in `<head>`.** Gmail's
+web client (and most webmail) strips `<style>` blocks entirely on render;
+a normal webpage-style stylesheet produces an email that arrives with the
+right text and links but zero visual styling, which is a silent failure
+you won't see until you check the actual delivered message (checking your
+own draft HTML file isn't enough — it'll look fine there). This has
+actually happened in practice. There is no shortcut around it: every
+`<div>`, `<td>`, `<a>`, etc. that needs color, spacing, or layout needs its
+own `style="..."` attribute, even though that means the same visual rule
+gets repeated across many tags instead of defined once.
+
 Tally sources across the whole report — main Top N **plus** each domain's
 🗞️ 小額外閱讀 combined — and append it (a simple table, or a bar chart if
 the output format supports one). Because of the quota in Step 2, every
