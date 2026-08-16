@@ -369,6 +369,36 @@ actually happened in practice. There is no shortcut around it: every
 own `style="..."` attribute, even though that means the same visual rule
 gets repeated across many tags instead of defined once.
 
+**A specific bug class to guard against: don't confuse a tint color meant
+as a background with the text `color`.** This has actually happened in
+practice — a 評語 (commentary) box's light accent tint (e.g. `#f5f3ff`)
+was written as `color:#f5f3ff` instead of `background:#f5f3ff`, and with no
+`background` set at all the box fell back to the page's own light
+background, making the text nearly invisible; the box's `<strong>評語：</strong>`
+label was separately set to `color:#fff` (white), which is only legible on
+a solid dark/accent-colored background — on a light tint it's invisible
+too. Also watch for **duplicate `color:` declarations on the same
+`style="..."` attribute** (e.g. `style="color:#374151;...;color:#f5f3ff"`)
+— inline CSS has no cascade warning, the second one silently wins, and this
+is exactly how a body-text color gets clobbered by a background tint that
+was appended later without removing the first declaration. A safe, tested
+template for a 評語 box:
+
+```html
+<div style="background:#f5f3ff;border-radius:10px;padding:16px 18px;margin:20px 0 18px">
+  <strong style="color:#5b21b6">評語：</strong>
+  <span style="color:#374151;font-size:13.5px;line-height:1.9">...內文...</span>
+</div>
+```
+
+i.e. `background` for the tint, a saturated/dark shade of the same hue
+(not white, not the tint itself) for the label, and a normal dark gray
+(`#374151` or similar) for body text — never let any of the three collapse
+onto the same property. Before sending, grep the final HTML for
+`color:#fff` / `color:#ffffff` and confirm each one sits inside a `<div>`
+whose `background` is actually dark — and grep for any `style="..."` that
+contains `color:` twice.
+
 Tally sources across the whole report — main Top N **plus** each domain's
 🗞️ 小額外閱讀 combined — and append it (a simple table, or a bar chart if
 the output format supports one). Because of the quota in Step 2, every
