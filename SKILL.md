@@ -51,6 +51,19 @@ does a first-pass keyword grouping. **This keyword matcher is English-only**
 and will misfire badly on non-English feeds — treat its bucket sizes as
 noise, not signal, until you've done Step 1.5.
 
+**`todays_articles` is a rolling window, not a calendar-date match.** It
+means "published within the last `--window-hours` (default 24) counted
+back from right now," not "date string equals today's date." This matters
+most for scheduled/recurring runs: a digest that runs daily at a fixed
+local time (e.g. 9am) wants "everything since roughly this time
+yesterday," and a bare calendar-date comparison both misses late-arriving
+items from "today" that haven't posted yet at run time and wrongly
+excludes items from late "yesterday" that are well within the last 24
+hours. If the user specifies a digest cadence/time (e.g. "every day at
+9am"), pass `--window-hours` matching that cadence (24 for daily) so the
+window lines up with "since the last run" rather than leaving the default
+unexamined.
+
 **Check `failed_feeds` in the output before anything else.** A feed that
 403s (many sites block non-browser User-Agents — old.reddit.com does this
 routinely) or that hit a paid proxy's quota (rss.app-hosted feeds returning

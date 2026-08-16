@@ -20,7 +20,7 @@ import argparse
 import json
 import time
 import urllib.error
-from datetime import datetime, date
+from datetime import datetime, date, timedelta, timezone
 from pathlib import Path
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -271,34 +271,59 @@ def classify_topics(articles: list[dict]) -> dict[str, list[dict]]:
     return dict(classified)
 
 
-def _parse_article_date(article_date: str):
+def _parse_article_datetime(article_date: str):
+    """Parse an RSS date string to a timezone-aware UTC datetime, or None.
+
+    A naive result (from formats with no offset — %Z is unreliable for
+    parsing arbitrary GMT-style text and often produces a naive datetime
+    anyway) is treated as UTC. That's an approximation, but RSS dates are
+    overwhelmingly UTC/GMT by convention, and being off by a source's local
+    UTC offset matters far less here than the previous behavior of only
+    comparing bare calendar dates, which silently drops the time-of-day
+    entirely.
+    """
     for fmt in ('%a, %d %b %Y %H:%M:%S %Z', '%a, %d %b %Y %H:%M:%S %z',
                 '%Y-%m-%dT%H:%M:%S%z', '%Y-%m-%d'):
         try:
-            return datetime.strptime(article_date, fmt).date()
+            dt = datetime.strptime(article_date, fmt)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt
         except ValueError:
             continue
     return None
 
 
-def split_todays_articles(articles: list[dict]) -> tuple[list[dict], list[dict]]:
-    """Split articles into (today's articles, everything else), deterministically by date.
+def split_recent_articles(articles: list[dict], window_hours: int = 24) -> tuple[list[dict], list[dict]]:
+    """Split articles into (published within the last `window_hours`, everything else).
+
+    This is a rolling window ending "now" (when the script runs), not a
+    bare calendar-date match — a scheduled run at a fixed local time (e.g.
+    a daily 9am digest) wants "everything since roughly this time
+    yesterday," not "everything whose date string happens to equal today's
+    calendar date," which both under- and over-counts depending on when in
+    the day the run happens and what timezone each feed's dates are in.
 
     Articles with an unparseable/missing date are treated as "other" rather
-    than assumed to be from today.
+    than assumed to be recent.
     """
-    today = date.today()
-    todays, others = [], []
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=window_hours)
+    recent, others = [], []
     for article in articles:
-        parsed = _parse_article_date(article.get('date', '')) if article.get('date') else None
-        if parsed == today:
-            todays.append(article)
+        parsed = _parse_article_datetime(article.get('date', '')) if article.get('date') else None
+        if parsed and parsed >= cutoff:
+            recent.append(article)
         else:
             others.append(article)
-    return todays, others
+    return recent, others
 
 
-def process_rss_file(filepath: str) -> dict:
+# Backwards-compatible alias — same rolling-window behavior, kept because
+# earlier SKILL.md revisions and ad-hoc scripts call this name directly.
+split_todays_articles = split_recent_articles
+
+
+def process_rss_file(filepath: str, window_hours: int = 24) -> dict:
     """Parse + classify a RSS/OPML file. No summarization here — see SKILL.md
     for how the resulting groups get handed off to per-domain subagents."""
 
@@ -365,7 +390,7 @@ def process_rss_file(filepath: str) -> dict:
     }
 
     for topic_key, domain_articles in classified.items():
-        todays, others = split_todays_articles(domain_articles)
+        todays, others = split_recent_articles(domain_articles, window_hours)
         result['domains'][DOMAIN_LABELS.get(topic_key, topic_key)] = {
             'article_count': len(domain_articles),
             'todays_articles': todays,
@@ -382,10 +407,13 @@ def main():
     )
     parser.add_argument('input', help='OPML 或 RSS/XML 檔案路徑')
     parser.add_argument('--output', '-o', help='輸出 JSON 檔案路徑（預設印到 stdout）')
+    parser.add_argument('--window-hours', type=int, default=24,
+                         help='「近期文章」的滾動時間窗（小時，預設 24）。'
+                              '例如排程在每天 9 點跑，24 小時窗大致等於「昨天9點到今天9點」。')
 
     args = parser.parse_args()
 
-    result = process_rss_file(args.input)
+    result = process_rss_file(args.input, window_hours=args.window_hours)
 
     output_json = json.dumps(result, indent=2, ensure_ascii=False)
     if args.output:
