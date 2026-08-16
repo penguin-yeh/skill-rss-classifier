@@ -399,6 +399,64 @@ onto the same property. Before sending, grep the final HTML for
 whose `background` is actually dark — and grep for any `style="..."` that
 contains `color:` twice.
 
+### Visual template for HTML email delivery — "晨間電訊" masthead layout
+
+When delivering as an HTML email (or an artifact/webpage that should look
+like one), use this newspaper-wire-dispatch template rather than a generic
+card layout — it was designed and approved by the user specifically for
+this report. Everything below is inline `style="..."`, no `<style>` block,
+per the Gmail rule above.
+
+**Tokens:**
+- Paper background `#f2f0ea`, card background `#fffdf9`, hairline
+  `#ddd8cc`
+- Ink `#1c1b19` (headings/body), soft ink `#6b6459` (meta text)
+- Headline face: `Georgia,'Noto Serif TC',serif` — body/meta face:
+  `-apple-system,BlinkMacSystemFont,'PingFang TC','Microsoft JhengHei','Noto Sans TC',Helvetica,Arial,sans-serif`
+  — monospace utility face for eyebrow labels/dates/metrics:
+  `ui-monospace,SFMono-Regular,Consolas,monospace`
+- 評語 box: unchanged from the safe template above (`background:#f5f3ff`,
+  label `#5b21b6`, body `#374151`)
+- 新舊比較 box (Technology domain only): `background:#f6ecd9`,
+  left border `#9c6b12`, label `#7a5209`
+- 小額外閱讀 box: dashed `1px #ddd8cc` border, `background:#f7f5ef`
+
+**Each domain gets its own "stamp color"** — do not reuse one accent for
+every domain. Assign colors from this rotation in the order domains appear
+in the report (extend the rotation with a new hue at similar saturation/
+lightness if there are more than 5 domains — don't just repeat #1):
+
+1. 印章紅 `#b3402f`
+2. 鋼藍 `#2c5f7c`
+3. 藏青紫 `#5b4a8a`
+4. 赭綠 `#5c6b3f`
+5. 赭黃 `#8a6d1f`
+
+A domain's stamp color applies to exactly three things, consistently:
+its eyebrow tag background (`<td style="...background:<color>...">`), its
+Top N item numbers (`color:<color>`), and a 3px top border on its section
+container (`border-top:3px solid <color>`). Everything else (body text,
+hairlines, 評語/新舊比較/小額外閱讀 boxes) stays on the fixed tokens above
+regardless of domain — only those three elements rotate, so the palette
+reads as "same design, different section" rather than a different theme
+per domain. The `objective_metric` gold (`#9c6b12`) is fixed and never
+part of the rotation — it signals "this is a quantified metric," not a
+domain.
+
+**Structure**, top to bottom: masthead (eyebrow label "RSS Feed 主題分類與
+摘要" in ink, big serif title, date + methodology note + HN snapshot time
+in soft ink) → one section per domain (eyebrow tag + article count/Top N
+count on one row → serif summary paragraph → numbered Top N items with
+hairline separators, `objective_metric` articles get the gold metric line,
+Technology-domain items get the 新舊比較 box → 評語 box → optional 小額外
+閱讀 box) → closing source-tally table with a `⚠️` line for `failed_feeds`.
+
+A full worked example with placeholder data lives at the artifact published
+during this design session — regenerate a fresh instance per real run
+rather than reusing static markup, since the actual number of domains,
+their names, and article counts differ every time.
+
+
 Tally sources across the whole report — main Top N **plus** each domain's
 🗞️ 小額外閱讀 combined — and append it (a simple table, or a bar chart if
 the output format supports one). Because of the quota in Step 2, every
