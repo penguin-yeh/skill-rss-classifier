@@ -309,6 +309,43 @@ inferring the extra depth from the domain name alone.
 
 ## Step 3: Aggregate into the final report
 
+**Decide the delivery channel FIRST, then pick the format — this routing
+step decides success or failure, don't skip it.** The markdown template
+below is **for plain-text destinations only** (a plain-text note, a
+terminal, somewhere that explicitly wants raw markdown). **The moment the
+destination is email / Gmail, a webpage, or an artifact, the deliverable is
+the inline-styled "晨間電訊" HTML further down — NOT markdown.**
+
+**Never send markdown straight into Gmail — this has actually happened in
+practice and breaks the report in two visible ways.** Gmail does not turn
+`##` into a heading or `**bold**` into styling, and it strips any `<style>`
+block wholesale. The result:
+
+- **Domain topics "disappear."** Each domain's heading (`## 領域名稱`) does
+  not render as a distinct titled section — either the literal `##` shows,
+  or (if an md→HTML step put the styling in a `<style>` block/classes)
+  Gmail drops the stamp-color eyebrow tags, the section separators, and the
+  3px top borders, so every domain collapses into one undifferentiated wall
+  and it reads as "the domains are gone."
+- **The 評語 box goes narrow with too many lines.** Its background, padding,
+  and full-width layout all live in styles Gmail throws away, so it falls
+  back to Gmail's default paragraph width (especially cramped on mobile) and
+  turns into a long stack of short lines that's uncomfortable to read.
+
+Both symptoms share one root cause: markdown / a `<style>` block reached
+Gmail. And **don't rely on an md→HTML auto-converter** to save you — those
+emit class-based or `<style>`-block CSS, which Gmail strips just the same.
+So before emailing, assemble the content into the inline-styled HTML below
+(every element carrying its own `style="..."`), and send *that*.
+
+Routing:
+- Plain-text destination → use the markdown template below.
+- email / Gmail / webpage / artifact → skip the markdown, produce the
+  "晨間電訊" inline-styled HTML (see the visual template section), no
+  `<style>` block anywhere.
+
+(Markdown template — plain-text destinations only:)
+
 ```
 # RSS Feed 主題分類與摘要
 *（分類依實際內容動態分群；Top N 依文章量比例分配；有客觀熱度數據時優先採用；已排除的內容註明於此）*
