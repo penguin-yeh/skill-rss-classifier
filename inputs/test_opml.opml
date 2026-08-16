@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="1.0">
+  <head>
+    <title>Test RSS Feeds</title>
+    <dateCreated>2024-01-15T10:00:00Z</dateCreated>
+  </head>
+  <body>
+    <outline type="rss" text="Artificial Intelligence" xmlUrl="https://feeds.reuters.com/reuters/artificial-intelligence" />
+    <outline type="rss" text="Science" xmlUrl="https://feeds.reuters.com/reuters/science" />
+    <outline type="rss" text="Business" xmlUrl="https://feeds.reuters.com/reuters/business" />
+    <outline text="Sub-category Tech">
+      <outline type="rss" text="Programming" xmlUrl="https://feeds.reuters.com/reuters/programming" />
+      <outline type="rss" text="Python" xmlUrl="https://france24.com/en/rss" />
+    </outline>
+  </body>
+</opml>

@@ -1,0 +1,4 @@
+{
+  "eval_id": 3,
+  "prompt": "Process this OPML file and give me a domain-by-domain breakdown of the RSS feeds. For each topic area, tell me what's most important from today and list the top 5 articles with titles and summaries."
+}

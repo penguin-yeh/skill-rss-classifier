@@ -1,0 +1,23 @@
+{
+  "skill_name": "rss-classifier",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Please classify and summarize the topics from this OPML file containing RSS feeds about technology, science, and business news. I want to see the topic domains, a summary of today's important events for each domain, and the top 5 trending articles per domain.",
+      "expected_output": "A structured report with topic domains (e.g., Technology, Science, Business), each containing a summary paragraph of today's important events and a list of top 5 articles with titles and concise summaries.",
+      "files": ["/home/penguin/.claude/skills/skill-rss-classifier/inputs/test_opml.opml"]
+    },
+    {
+      "id": 2,
+      "prompt": "I have an OPML file with my subscribed RSS feeds. Help me organize the content by topic and highlight the most important articles from today. Show me the classification, summaries, and top articles for each topic.",
+      "expected_output": "A clear organization of RSS feed topics with summaries of important events and top articles per topic, formatted with domain headers, summary paragraphs, and article lists.",
+      "files": ["/home/penguin/.claude/skills/skill-rss-classifier/inputs/test_opml.opml"]
+    },
+    {
+      "id": 3,
+      "prompt": "Process this OPML file and give me a domain-by-domain breakdown of the RSS feeds. For each topic area, tell me what's most important from today and list the top 5 articles with titles and summaries.",
+      "expected_output": "A multi-domain report showing classification of RSS feed topics, with each domain having a summary of today's key events and the top 5 trending articles with titles and 1-2 sentence summaries.",
+      "files": ["/home/penguin/.claude/skills/skill-rss-classifier/inputs/test_opml.opml"]
+    }
+  ]
+}

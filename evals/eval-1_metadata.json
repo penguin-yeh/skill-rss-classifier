@@ -1,0 +1,4 @@
+{
+  "eval_id": 1,
+  "prompt": "Please classify and summarize the topics from this OPML file containing RSS feeds about technology, science, and business news. I want to see the topic domains, a summary of today's important events for each domain, and the top 5 trending articles per domain."
+}
