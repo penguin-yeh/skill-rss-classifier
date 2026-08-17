@@ -392,7 +392,7 @@ link/title/date integrity.
 **Also verify the source-tally chart actually rendered as a bar chart, not
 a table that silently reverted to numbers-only** — grep the final HTML for
 the bar-row pattern from the template above (a `<td>` with both a
-`background:` and a `width:...%` in the same `style=`) and confirm it
+`background-color:` and a `width:...%` in the same `style=`) and confirm it
 appears once per source row. If it's missing, the chart degraded back to a
 plain table somewhere in generation — a known failure mode — and must be
 rebuilt from the template, not patched around.
@@ -418,32 +418,80 @@ gets repeated across many tags instead of defined once.
 **A specific bug class to guard against: don't confuse a tint color meant
 as a background with the text `color`.** This has actually happened in
 practice — a 評語 (commentary) box's light accent tint (e.g. `#f5f3ff`)
-was written as `color:#f5f3ff` instead of `background:#f5f3ff`, and with no
-`background` set at all the box fell back to the page's own light
-background, making the text nearly invisible; the box's `<strong>評語：</strong>`
+was written as `color:#f5f3ff` instead of a background fill, and with no
+fill set at all the box fell back to the page's own light background,
+making the text nearly invisible; the box's `<strong>評語：</strong>`
 label was separately set to `color:#fff` (white), which is only legible on
 a solid dark/accent-colored background — on a light tint it's invisible
 too. Also watch for **duplicate `color:` declarations on the same
 `style="..."` attribute** (e.g. `style="color:#374151;...;color:#f5f3ff"`)
 — inline CSS has no cascade warning, the second one silently wins, and this
 is exactly how a body-text color gets clobbered by a background tint that
-was appended later without removing the first declaration. A safe, tested
-template for a 評語 box:
+was appended later without removing the first declaration.
+
+**Another bug class that produces the exact same "white/invisible text"
+symptom, and is the more common one in Gmail: the `background` shorthand
+gets stripped on `<td>`/`<div>`, leaving text with no fill behind it.**
+This has actually happened in practice: the domain eyebrow tags (white
+text meant to sit on the domain's stamp color) came through with the stamp
+color gone, so every domain label rendered as white-on-cream and looked
+like the domain titles had vanished — and in a full-report regression,
+*every* fill in the email (masthead, eyebrow tags, 評語/新舊比較/小額外閱讀
+boxes, the source-tally bar chart) went missing at once because the whole
+template had drifted back onto the `background:` shorthand. The cause
+isn't the color/background confusion above — `background` was spelled
+correctly — it's that **Gmail strips the `background` *shorthand* on
+`<td>`/`<div>` wholesale** (it treats the shorthand as a possible
+background-*image* and drops it), while it keeps the explicit
+`background-color` property. So two hard rules for every solid fill in the
+whole template, not just the 評語 box:
+
+- **Use `background-color:<color>`, never the `background:` shorthand,
+  for every fill.** The white-on-color elements (eyebrow tags, bar-chart
+  fills) go *invisible* when the shorthand is stripped, so they're the
+  fatal case, but the tinted boxes and the paper/card masthead fills lose
+  their look too. There is no "safe to leave as shorthand" case:
+  `background:` shorthand appears nowhere in the final HTML; every fill is
+  `background-color`.
+- **Add a `bgcolor="<color>"` HTML attribute as a belt-and-suspenders**
+  alongside the CSS — Gmail honors the legacy `bgcolor` attribute even
+  when it strips CSS fills, so the color survives no matter what. (A light
+  Gmail dark-mode caveat: dark mode can still recolor fills on some
+  clients; `bgcolor` is the most dark-mode-resistant of the two, which is
+  another reason to always include it.)
+- **The eyebrow tag (or any fill that must survive) must be a real `<td>`
+  inside a `<table>`** (or a `<span style="display:inline-block">`); a bare
+  `<td>` outside a table won't paint its background at all.
+
+A safe, tested template for a 評語 box:
 
 ```html
-<div style="background:#f5f3ff;border-radius:10px;padding:16px 18px;margin:20px 0 18px">
+<div style="background-color:#f5f3ff;border-radius:10px;padding:16px 18px;margin:20px 0 18px">
   <strong style="color:#5b21b6">評語：</strong>
   <span style="color:#374151;font-size:13.5px;line-height:1.9">...內文...</span>
 </div>
 ```
 
-i.e. `background` for the tint, a saturated/dark shade of the same hue
-(not white, not the tint itself) for the label, and a normal dark gray
-(`#374151` or similar) for body text — never let any of the three collapse
+And a safe, tested eyebrow tag (stamp color = 印章紅 `#b3402f` here):
+
+```html
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse">
+  <tr>
+    <td bgcolor="#b3402f" style="background-color:#b3402f;color:#ffffff;padding:4px 12px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;font-weight:700;letter-spacing:.05em">科技</td>
+  </tr>
+</table>
+```
+
+i.e. `background-color` for the tint, a saturated/dark shade of the same
+hue (not white, not the tint itself) for the label, and a normal dark gray
+(`#374151` or similar) for body text — never let any of these collapse
 onto the same property. Before sending, grep the final HTML for
-`color:#fff` / `color:#ffffff` and confirm each one sits inside a `<div>`
-whose `background` is actually dark — and grep for any `style="..."` that
-contains `color:` twice.
+**any occurrence of `background:` (the bare shorthand) and confirm there
+are zero** — every hit is a fill that will vanish in Gmail — and grep for
+`color:#fff` / `color:#ffffff` to confirm each one sits inside an element
+that carries a `background-color` (not a bare `background`) AND a
+`bgcolor` attribute in the same dark color, and grep for any
+`style="..."` that contains `color:` twice.
 
 ### Visual template for HTML email delivery — "晨間電訊" masthead layout
 
@@ -453,7 +501,10 @@ card layout — it was designed and approved by the user specifically for
 this report. Everything below is inline `style="..."`, no `<style>` block,
 per the Gmail rule above.
 
-**Tokens:**
+**Tokens** (every color below is applied via `background-color`, never the
+`background` shorthand — see the Gmail fill rule above; the paper and card
+fills additionally get a matching `bgcolor="..."` on their wrapping table
+cell):
 
 - Paper background `#f2f0ea`, card background `#fffdf9`, hairline
   `#ddd8cc`
@@ -462,11 +513,11 @@ per the Gmail rule above.
   `-apple-system,BlinkMacSystemFont,'PingFang TC','Microsoft JhengHei','Noto Sans TC',Helvetica,Arial,sans-serif`
   — monospace utility face for eyebrow labels/dates/metrics:
   `ui-monospace,SFMono-Regular,Consolas,monospace`
-- 評語 box: unchanged from the safe template above (`background:#f5f3ff`,
-  label `#5b21b6`, body `#374151`)
-- 新舊比較 box (Technology domain only): `background:#f6ecd9`,
+- 評語 box: unchanged from the safe template above
+  (`background-color:#f5f3ff`, label `#5b21b6`, body `#374151`)
+- 新舊比較 box (Technology domain only): `background-color:#f6ecd9`,
   left border `#9c6b12`, label `#7a5209`
-- 小額外閱讀 box: dashed `1px #ddd8cc` border, `background:#f7f5ef`
+- 小額外閱讀 box: dashed `1px #ddd8cc` border, `background-color:#f7f5ef`
 
 **Each domain gets its own "stamp color"** — do not reuse one accent for
 every domain. Assign colors from this rotation in the order domains appear
@@ -480,8 +531,8 @@ lightness if there are more than 5 domains — don't just repeat #1):
 5. 赭黃 `#8a6d1f`
 
 A domain's stamp color applies to exactly three things, consistently:
-its eyebrow tag background (`<td style="...background:<color>...">`), its
-Top N item numbers (`color:<color>`), and a 3px top border on its section
+its eyebrow tag background (`<td bgcolor="<color>" style="...background-color:<color>...">`),
+its Top N item numbers (`color:<color>`), and a 3px top border on its section
 container (`border-top:3px solid <color>`). Everything else (body text,
 hairlines, 評語/新舊比較/小額外閱讀 boxes) stays on the fixed tokens above
 regardless of domain — only those three elements rotate, so the palette
@@ -521,13 +572,14 @@ tally's max count, so the colored cell itself *is* the bar:
     <td style="width:130px;padding:5px 8px;font-size:12.5px;color:#1c1b19;white-space:nowrap">[來源名稱]</td>
     <td style="padding:5px 8px">
       <table role="presentation" width="100%" style="border-collapse:collapse"><tr>
-        <td style="width:[pct]%;background:#1c1b19;height:11px;border-radius:2px;font-size:0;line-height:0">&nbsp;</td>
+        <td width="[pct]%" bgcolor="#1c1b19" style="width:[pct]%;background-color:#1c1b19;height:11px;border-radius:2px;font-size:0;line-height:0">&nbsp;</td>
         <td style="width:[100-pct]%;font-size:0;line-height:0">&nbsp;</td>
       </tr></table>
     </td>
     <td style="width:28px;padding:5px 8px;font-size:12.5px;color:#6b6459;text-align:right">[count]</td>
   </tr>
-  <!-- one row per source, sorted descending by count -->
+  <!-- one row per source, sorted descending by count; background-color +
+       matching bgcolor, never the bare background: shorthand (Gmail strips it) -->
 </table>
 ```
 
