@@ -453,7 +453,7 @@ in soft ink) → one section per domain (eyebrow tag + article count/Top N
 count on one row → serif summary paragraph → numbered Top N items with
 hairline separators, `objective_metric` articles get the gold metric line,
 Technology-domain items get the 新舊比較 box → 評語 box → optional 小額外
-閱讀 box) → closing source-tally table with a `⚠️` line for `failed_feeds`.
+閱讀 box) → closing source-tally bar chart with a `⚠️` line for `failed_feeds`.
 
 A full worked example with placeholder data lives at the artifact published
 during this design session — regenerate a fresh instance per real run
@@ -461,8 +461,10 @@ rather than reusing static markup, since the actual number of domains,
 their names, and article counts differ every time.
 
 Tally sources across the whole report — main Top N **plus** each domain's
-🗞️ 小額外閱讀 combined — and append it (a simple table, or a bar chart if
-the output format supports one). Because of the quota in Step 2, every
+🗞️ 小額外閱讀 combined — and append it **as a horizontal bar chart**, not
+a plain table (in an HTML email, a simple table of `<td>` bars — width
+proportional to count — with the number printed alongside works well and
+stays inline-style-safe). Because of the quota in Step 2, every
 *active* source that appears anywhere in the report should land at ≥3 in
 this tally; if one doesn't, that's a sign the quota wasn't actually applied
 somewhere and is worth double-checking before sending. The exception is a
