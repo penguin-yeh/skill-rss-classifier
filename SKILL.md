@@ -40,6 +40,19 @@ All user-facing output — domain names, summaries, article write-ups — must
 be in **Traditional Chinese (繁體中文)**, regardless of the language the
 original feed content is in.
 
+**Keep intermediate artifacts out of the conversation transcript.** The
+parsed JSON, the reclustered-domains JSON, each domain's payload, and the
+draft/final HTML are all meant to live as files (`/tmp/...` or similar) —
+write to them and pass *paths* to scripts/subagents, don't paste their full
+contents into your own reply or a tool-call argument just to "show" them.
+This is the single biggest token lever in the whole pipeline: a full HTML
+email draft or a raw parsed-JSON dump pasted into the transcript costs far
+more than the actual generation work, and it recurs at every step that
+touches those files (sampling titles, verifying links, rendering the
+email). Read back only the small slice you actually need (e.g. the title
+samples in Step 1.5, a `grep` for a specific link in the verification
+pass) instead of the whole file.
+
 ## Step 1: Parse & rough-classify
 
 ```bash
