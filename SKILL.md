@@ -465,10 +465,37 @@ rather than reusing static markup, since the actual number of domains,
 their names, and article counts differ every time.
 
 Tally sources across the whole report — main Top N **plus** each domain's
-🗞️ 小額外閱讀 combined — and append it **as a horizontal bar chart**, not
-a plain table (in an HTML email, a simple table of `<td>` bars — width
-proportional to count — with the number printed alongside works well and
-stays inline-style-safe). Because of the quota in Step 2, every
+🗞️ 小額外閱讀 combined — and append it **as an actual horizontal bar
+chart, not a plain numbers-only table.** This has previously gone wrong in
+practice — a vague "use a bar chart" instruction without a concrete markup
+example still produced a plain table, because in an HTML email a bar chart
+*is* a table underneath (there's no `<canvas>`/SVG-chart-library option
+under the inline-style-only constraint) and it's easy to stop at just the
+label+number columns and skip the part that actually draws a bar. Use this
+exact structure per source row — a nested one-row table whose first `<td>`
+is colored and width-percentaged to the source's count relative to the
+tally's max count, so the colored cell itself *is* the bar:
+
+```html
+<table role="presentation" width="100%" style="border-collapse:collapse;margin-top:10px">
+  <tr>
+    <td style="width:130px;padding:5px 8px;font-size:12.5px;color:#1c1b19;white-space:nowrap">[來源名稱]</td>
+    <td style="padding:5px 8px">
+      <table role="presentation" width="100%" style="border-collapse:collapse"><tr>
+        <td style="width:[pct]%;background:#1c1b19;height:11px;border-radius:2px;font-size:0;line-height:0">&nbsp;</td>
+        <td style="width:[100-pct]%;font-size:0;line-height:0">&nbsp;</td>
+      </tr></table>
+    </td>
+    <td style="width:28px;padding:5px 8px;font-size:12.5px;color:#6b6459;text-align:right">[count]</td>
+  </tr>
+  <!-- one row per source, sorted descending by count -->
+</table>
+```
+
+`[pct]` = `round(count / max_count * 100)`, clamped to a minimum of ~6 so a
+source with a small count still shows a visible sliver instead of an
+invisible 0-width cell. Sort rows descending by count so the chart reads
+top-to-bottom as a ranking. Because of the quota in Step 2, every
 *active* source that appears anywhere in the report should land at ≥3 in
 this tally; if one doesn't, that's a sign the quota wasn't actually applied
 somewhere and is worth double-checking before sending. The exception is a
