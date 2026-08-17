@@ -159,7 +159,10 @@ fabricate signal that isn't there:
   crowd a low-volume one out before the subagent ever sees it. This doesn't
   force source diversity into the final Top N — that's still the
   subagent's editorial call (see the diversity note in Step 2) — it only
-  guarantees visibility.
+  guarantees visibility. The floor is skipped for a stale source: if its
+  most recent article is older than 7 days, it's not force-included and
+  can legitimately end up below the floor (even absent) in the pool — a
+  dead/slow feed shouldn't get manufactured presence just to hit a quota.
 
 Extend `extract_objective_metric()` in `prepare_domain_payloads.py` (not the
 subagent prompts) if you add a feed that has real engagement data.
@@ -240,9 +243,8 @@ aggregation order.
 
 ### What each subagent should produce
 
-**Summary of today's important events** — about 3 sentences in Traditional
-Chinese (kept tight — roughly a third shorter than a full 4-5 sentence
-rundown), with real context and causal connections between the day's stories,
+**Summary of today's important events** — 4-5 sentences in Traditional
+Chinese, with real context and causal connections between the day's stories,
 not a mechanical concatenation of each article's first sentence. If there
 are no `todays_articles`, fall back to the most notable `other_articles_sample`
 items and say so explicitly ("以下為近期而非今日的重點").
@@ -280,8 +282,7 @@ an article actually from a week ago is a factual error, not a style choice
 summary, and if the picks span a date range, say so explicitly (e.g. "以下
 是過去兩週的精選，並非同一天發生") instead of implying same-day freshness.
 
-**Closing commentary (評語)** — a short 2-3 sentence remark (kept tight —
-roughly a third shorter than a full paragraph) reflecting on what *today's
+**Closing commentary (評語)** — one paragraph reflecting on what *today's
 articles themselves* reveal: a pattern across stories, an implicit lesson,
 an irony or contradiction, something worth learning or applying. This must
 be about the news content — never a meta-comment on the RSS source quality,
@@ -311,49 +312,12 @@ inferring the extra depth from the domain name alone.
 
 ## Step 3: Aggregate into the final report
 
-**Decide the delivery channel FIRST, then pick the format — this routing
-step decides success or failure, don't skip it.** The markdown template
-below is **for plain-text destinations only** (a plain-text note, a
-terminal, somewhere that explicitly wants raw markdown). **The moment the
-destination is email / Gmail, a webpage, or an artifact, the deliverable is
-the inline-styled "晨間電訊" HTML further down — NOT markdown.**
-
-**Never send markdown straight into Gmail — this has actually happened in
-practice and breaks the report in two visible ways.** Gmail does not turn
-`##` into a heading or `**bold**` into styling, and it strips any `<style>`
-block wholesale. The result:
-
-- **Domain topics "disappear."** Each domain's heading (`## 領域名稱`) does
-  not render as a distinct titled section — either the literal `##` shows,
-  or (if an md→HTML step put the styling in a `<style>` block/classes)
-  Gmail drops the stamp-color eyebrow tags, the section separators, and the
-  3px top borders, so every domain collapses into one undifferentiated wall
-  and it reads as "the domains are gone."
-- **The 評語 box goes narrow with too many lines.** Its background, padding,
-  and full-width layout all live in styles Gmail throws away, so it falls
-  back to Gmail's default paragraph width (especially cramped on mobile) and
-  turns into a long stack of short lines that's uncomfortable to read.
-
-Both symptoms share one root cause: markdown / a `<style>` block reached
-Gmail. And **don't rely on an md→HTML auto-converter** to save you — those
-emit class-based or `<style>`-block CSS, which Gmail strips just the same.
-So before emailing, assemble the content into the inline-styled HTML below
-(every element carrying its own `style="..."`), and send *that*.
-
-Routing:
-- Plain-text destination → use the markdown template below.
-- email / Gmail / webpage / artifact → skip the markdown, produce the
-  "晨間電訊" inline-styled HTML (see the visual template section), no
-  `<style>` block anywhere.
-
-(Markdown template — plain-text destinations only:)
-
 ```
 # RSS Feed 主題分類與摘要
 *（分類依實際內容動態分群；Top N 依文章量比例分配；有客觀熱度數據時優先採用；已排除的內容註明於此）*
 
 ## [領域名稱 1]（文章數 → Top N）
-**今天重要事件摘要：** [約 3 句，帶脈絡與因果，聚焦今天最值得注意的內容（較舊版 4-5 句精簡約三分之一）]
+**今天重要事件摘要：** [4-5 句，帶脈絡與因果，聚焦今天最值得注意的內容]
 
 **熱門文章 Top N：**
 1. **標題：** [[文章標題]([文章連結])] — 標題本身即為指向原文的超連結
@@ -362,7 +326,7 @@ Routing:
 
 ... (共 N 篇)
 
-**評語：** [2-3 句、收緊約三分之一，針對今天新聞內容本身的觀察/心得，不評論資料來源]
+**評語：** [一段，針對今天新聞內容本身的觀察/心得，不評論資料來源]
 
 **🗞️ 小額外閱讀：**（僅在有來源需要湊足保底 3 篇、但湊數的文章新聞價值不足以進 Top N 時才出現；省略整節如果本領域每個入選來源本來就都 ≥3 篇）
 [一句話說明這批是什麼、為什麼放在這裡]
@@ -424,76 +388,19 @@ was appended later without removing the first declaration. A safe, tested
 template for a 評語 box:
 
 ```html
-<div style="background-color:#f5f3ff;border-left:4px solid #7c3aed;border-radius:10px;padding:16px 18px;margin:20px 0 18px">
+<div style="background:#f5f3ff;border-radius:10px;padding:16px 18px;margin:20px 0 18px">
   <strong style="color:#5b21b6">評語：</strong>
-  <span style="color:#374151;font-size:13.5px;line-height:1.75">...內文...</span>
+  <span style="color:#374151;font-size:13.5px;line-height:1.9">...內文...</span>
 </div>
 ```
 
-i.e. `background-color` for the tint (never the `background` shorthand — see
-the Gmail note below), a `border-left` highlight bar in a brighter shade of
-the same hue (mirroring the 新舊比較 box's left border), a saturated/dark
-shade of the same hue
-(not white, not the tint itself) for the label, a normal dark gray
-(`#374151` or similar) for body text, and an explicit `font-size`/`line-height`
-on the body `<span>` matching the report's other body text (e.g. `13.5px`/`1.75`).
-Do NOT leave the 評語 body size unset expecting it to "inherit the body" — in
-an email there is no shared base to inherit, so an unset block falls back to
-the mail client's own default (Gmail ≈ 16px with tight leading) and renders
-noticeably larger and more cramped than the surrounding text. Never let any
-of these collapse onto the same property. Before sending, grep the final HTML for
-`color:#fff` / `color:#ffffff` and confirm each one sits inside an element
-whose fill is actually dark — and grep for any `style="..."` that
+i.e. `background` for the tint, a saturated/dark shade of the same hue
+(not white, not the tint itself) for the label, and a normal dark gray
+(`#374151` or similar) for body text — never let any of the three collapse
+onto the same property. Before sending, grep the final HTML for
+`color:#fff` / `color:#ffffff` and confirm each one sits inside a `<div>`
+whose `background` is actually dark — and grep for any `style="..."` that
 contains `color:` twice.
-
-**Another bug class that produces the exact same "white text is invisible"
-symptom — and it's the more common one in Gmail: the `background` shorthand
-gets stripped on `<td>`/`<div>`, leaving white text on no fill.** This has
-actually happened in practice: the domain eyebrow tags (white text meant to
-sit on the domain's stamp color) came through with the stamp color gone, so
-every domain label rendered as white-on-cream and looked like the domain
-titles had vanished. The cause is NOT the color/background confusion above —
-the `background-color` was written correctly — it's that **Gmail strips the
-`background` *shorthand* on `<td>`/`<div>` wholesale** (it treats the
-shorthand as a possible background-*image* and drops it), while it keeps the
-explicit `background-color` property. So two hard rules for any element whose
-legibility depends on a colored fill (all the stamp-color eyebrow tags, and
-anything else with white text):
-
-- **Use `background-color:<color>`, never the `background:` shorthand, for
-  EVERY solid fill in the whole template — not just the white-on-color eyebrow
-  tags.** The white-on-color elements (eyebrow tags) go *invisible* when the
-  shorthand is stripped, so they're the fatal case. But the tinted boxes
-  (評語 `#f5f3ff`, 新舊比較 `#f6ecd9`, 小額外閱讀 `#f7f5ef`) and the paper
-  `#f2f0ea` / card `#fffdf9` masthead lose their fill too — the report stays
-  *readable* (dark text on white) but the whole approved "晨間電訊" look
-  flattens to plain black-on-white, which for a box like 評語 regresses
-  straight back toward the flat, hard-to-scan block that was the original
-  complaint. So there is no "safe to leave as shorthand" case: `background:`
-  shorthand appears nowhere in the final HTML; every fill is `background-color`.
-- **Add a `bgcolor="<color>"` HTML attribute as a belt-and-suspenders**
-  alongside the CSS — Gmail honors the legacy `bgcolor` attribute even when it
-  strips CSS fills, so the color survives no matter what.
-- **The eyebrow tag must be a real `<td>` inside a `<table>`** (or a
-  `<span style="display:inline-block">`); a bare `<td>` outside a table won't
-  paint its background at all.
-
-A safe, tested eyebrow tag (stamp color = 印章紅 `#b3402f` here):
-
-```html
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse">
-  <tr>
-    <td bgcolor="#b3402f" style="background-color:#b3402f;color:#ffffff;padding:4px 12px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;font-weight:700;letter-spacing:.05em">科技</td>
-  </tr>
-</table>
-```
-
-Add this to the pre-send grep: for every `color:#fff`/`color:#ffffff`,
-confirm the SAME element carries a `background-color` (not a bare
-`background`) AND a `bgcolor` attribute in the same dark stamp color. A
-light Gmail dark-mode caveat: dark mode can still recolor fills on some
-clients; the `bgcolor` attribute is the most dark-mode-resistant of the
-options, which is another reason to always include it.
 
 ### Visual template for HTML email delivery — "晨間電訊" masthead layout
 
@@ -503,30 +410,8 @@ card layout — it was designed and approved by the user specifically for
 this report. Everything below is inline `style="..."`, no `<style>` block,
 per the Gmail rule above.
 
-**Two Gmail-specific structural must-dos (independent of the fill rules
-above):**
-- **Single column, capped width.** Wrap the entire report in ONE
-  single-column table, `max-width:600px` (a `width:100%` inner table clamped
-  by a `max-width:600px` container is the reliable pattern), centered with
-  `margin:0 auto`. Never lay the report out as a multi-column table. This is
-  what guarantees every text block — the summary paragraphs AND every 評語
-  box — gets the same full readable width, so the "評語 too narrow, too many
-  short lines" problem can't recur structurally even in a client that behaved
-  differently from Gmail. Give text blocks generous horizontal padding
-  (`padding:0 20px` or via the cell) rather than letting them run edge to
-  edge.
-- **Style every `<a>` explicitly.** An article-title link with no inline
-  color/decoration renders as Gmail's default blue-underline, and Gmail will
-  also auto-linkify bare dates and turn them a clashing blue. So each title
-  `<a>` carries its own `style="color:#1c1b19;text-decoration:none"` (or an
-  intentional link hue) — pick it deliberately, don't leave it to the client.
-  Keep the underline off titles if the ink palette is the point, but make
-  sure the link is still visibly a link (e.g. weight or the stamp-color number
-  beside it) so it doesn't read as plain text.
+**Tokens:**
 
-**Tokens** (every color below is applied via `background-color`, never the
-`background` shorthand; the paper and card fills additionally get a matching
-`bgcolor="..."` on their wrapping table cell — see the Gmail fill rule above):
 - Paper background `#f2f0ea`, card background `#fffdf9`, hairline
   `#ddd8cc`
 - Ink `#1c1b19` (headings/body), soft ink `#6b6459` (meta text)
@@ -534,11 +419,11 @@ above):**
   `-apple-system,BlinkMacSystemFont,'PingFang TC','Microsoft JhengHei','Noto Sans TC',Helvetica,Arial,sans-serif`
   — monospace utility face for eyebrow labels/dates/metrics:
   `ui-monospace,SFMono-Regular,Consolas,monospace`
-- 評語 box: unchanged from the safe template above (`background-color:#f5f3ff`,
-  left border `#7c3aed`, label `#5b21b6`, body `#374151`)
-- 新舊比較 box (Technology domain only): `background-color:#f6ecd9`,
+- 評語 box: unchanged from the safe template above (`background:#f5f3ff`,
+  label `#5b21b6`, body `#374151`)
+- 新舊比較 box (Technology domain only): `background:#f6ecd9`,
   left border `#9c6b12`, label `#7a5209`
-- 小額外閱讀 box: dashed `1px #ddd8cc` border, `background-color:#f7f5ef`
+- 小額外閱讀 box: dashed `1px #ddd8cc` border, `background:#f7f5ef`
 
 **Each domain gets its own "stamp color"** — do not reuse one accent for
 every domain. Assign colors from this rotation in the order domains appear
@@ -552,9 +437,9 @@ lightness if there are more than 5 domains — don't just repeat #1):
 5. 赭黃 `#8a6d1f`
 
 A domain's stamp color applies to exactly three things, consistently:
-its eyebrow tag background, its Top N item numbers (`color:<color>`), and a
-3px top border on its section container (`border-top:3px solid <color>`).
-Everything else (body text,
+its eyebrow tag background (`<td style="...background:<color>...">`), its
+Top N item numbers (`color:<color>`), and a 3px top border on its section
+container (`border-top:3px solid <color>`). Everything else (body text,
 hairlines, 評語/新舊比較/小額外閱讀 boxes) stays on the fixed tokens above
 regardless of domain — only those three elements rotate, so the palette
 reads as "same design, different section" rather than a different theme
@@ -575,48 +460,15 @@ during this design session — regenerate a fresh instance per real run
 rather than reusing static markup, since the actual number of domains,
 their names, and article counts differ every time.
 
-
 Tally sources across the whole report — main Top N **plus** each domain's
-🗞️ 小額外閱讀 combined — and append it. **For HTML email (and the artifact/
-webpage variant), render this tally as a horizontal bar chart, not a plain
-table.** You cannot use `<canvas>`, `<svg>` scripting, or a charting library
-in email — they're stripped. The reliable approach is a pure HTML/CSS bar
-chart: one row per source (source label + a proportional-width filled bar +
-the count), where each bar is a table cell whose width is scaled to the
-count (widest source = full bar width, the rest proportional). Fill the bars
-with `background-color` + a matching `bgcolor` attribute, **colored by each
-source's primary contributing domain — i.e. that domain's stamp color.** If a
-source fed more than one domain, use the domain it contributed the most
-articles to. This makes the chart informative (you can see which domains the
-volume comes from) and — because each bar is colored by its *own* source's
-domain rather than one color applied to the whole tally — it does not falsely
-imply the entire tally belongs to a single domain. (The earlier "use neutral
-ink" rule was to avoid that false implication; per-source domain coloring
-avoids it too, while carrying real information, so prefer it.) Keep bars short
-enough that the widest still fits inside the 600px column on mobile (a ~200px
-max bar + a ~100px label column is safe). A tested template (widest source =
-200px; bar colored by its domain's stamp color, here 科技 印章紅 `#b3402f`):
-
-```html
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse">
-  <tr>
-    <td style="font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;color:#1c1b19;padding:4px 10px 4px 0;white-space:nowrap;width:100px">Hacker News</td>
-    <td style="padding:4px 0">
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse"><tr>
-        <td width="200" height="14" bgcolor="#b3402f" style="width:200px;height:14px;line-height:14px;font-size:0;background-color:#b3402f">&nbsp;</td>
-        <td style="padding-left:8px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;color:#6b6459">4</td>
-      </tr></table>
-    </td>
-  </tr>
-  <!-- one <tr> per source; bar width = round(count / max_count * 200)px;
-       bgcolor + background-color = that source's primary domain's stamp color -->
-</table>
-```
-
-Because of the quota in Step 2, every
-source that appears anywhere in the report should land at ≥3 in this tally;
-if one doesn't, that's a sign the quota wasn't actually applied somewhere
-and is worth double-checking before sending. Label the tally clearly as
+🗞️ 小額外閱讀 combined — and append it (a simple table, or a bar chart if
+the output format supports one). Because of the quota in Step 2, every
+*active* source that appears anywhere in the report should land at ≥3 in
+this tally; if one doesn't, that's a sign the quota wasn't actually applied
+somewhere and is worth double-checking before sending. The exception is a
+stale source (its most recent article is older than 7 days) — the floor is
+deliberately not enforced for those, so landing below 3 (or not appearing
+at all) is expected, not a bug. Label the tally clearly as
 "Top N + 小額外閱讀 合計" so it's not mistaken for a claim that the main
 highlight list itself is evenly spread — it isn't, and doesn't need to be.
 

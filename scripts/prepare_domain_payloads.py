@@ -29,6 +29,13 @@ does two purely mechanical things that don't need judgment:
    that's still the subagent's call — it just makes sure the subagent can
    actually see and consider it.
 
+   The floor is skipped for a source that's gone stale: if its own
+   most-recent article is older than 7 days, it's not force-included, and
+   that source can legitimately end up with fewer than the floor (even
+   zero) in the pool. A dead/slow feed shouldn't get manufactured presence
+   just to hit a quota — the floor exists to protect low-volume-but-active
+   sources, not to pad out ones that haven't posted anything recent.
+
 Input: a JSON file shaped like rss_classifier.py's output —
   {"domains": {"<name>": {"todays_articles": [...], "other_articles": [...]}, ...}}
 (the domain names/grouping can be your re-clustered version, not necessarily
@@ -42,7 +49,14 @@ ready to hand to a subagent.
 import argparse
 import json
 import re
+import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent))
+from rss_classifier import _parse_article_datetime  # noqa: E402
+
+STALE_FLOOR_WINDOW = timedelta(days=7)
 
 
 def extract_objective_metric(article: dict):
@@ -82,16 +96,36 @@ def allocate_top_n(counts: dict[str, int], budget: int, min_n: int, max_n: int) 
     }
 
 
+def _is_stale(group: list[dict], now: datetime) -> bool:
+    """A source is stale if none of its articles were published within the
+    last STALE_FLOOR_WINDOW. Unparseable/missing dates don't count as
+    recent, but also don't count as proof of staleness on their own — the
+    group is only stale if every dated article is old and there's nothing
+    undated to give it the benefit of the doubt.
+    """
+    dates = [_parse_article_datetime(a.get('date', '')) for a in group]
+    dates = [d for d in dates if d is not None]
+    if not dates:
+        return False
+    return max(dates) < now - STALE_FLOOR_WINDOW
+
+
 def cap_with_source_floor(articles: list[dict], cap: int, per_source_floor: int) -> list[dict]:
     """Cap a list to `cap` items, but first guarantee each source_title gets
     up to `per_source_floor` of its own highest-scoring articles in the pool,
     before filling the rest by global score. Keeps the current score-based
     ranking as the primary ordering — this only prevents a high-volume
     source from silently pushing a low-volume source out of the pool.
+
+    A source whose most recent article is older than STALE_FLOOR_WINDOW is
+    exempt from the floor guarantee (see module docstring point 3) — it's
+    left to fall out via ordinary score-based capping like any other
+    article, which can drop it below the floor entirely.
     """
     if len(articles) <= cap:
         return sorted(articles, key=lambda a: a.get('_score', -1), reverse=True)
 
+    now = datetime.now(timezone.utc)
     by_source: dict[str, list[dict]] = {}
     for a in articles:
         by_source.setdefault(a.get('source_title', ''), []).append(a)
@@ -100,6 +134,8 @@ def cap_with_source_floor(articles: list[dict], cap: int, per_source_floor: int)
 
     floor_picks = []
     for group in by_source.values():
+        if _is_stale(group, now):
+            continue
         floor_picks.extend(group[:per_source_floor])
     floor_ids = {id(a) for a in floor_picks}
 
@@ -124,7 +160,7 @@ def main():
     parser.add_argument('--other-cap', type=int, default=50,
                          help='Max other_articles to include per domain payload')
     parser.add_argument('--per-source-floor', type=int, default=3,
-                         help='Guarantee each source at least this many articles in the pool, if it has that many (default 3)')
+                         help='Guarantee each source at least this many articles in the pool, if it has that many and its most recent article is within 7 days (default 3)')
     args = parser.parse_args()
 
     data = json.loads(Path(args.input).read_text())
