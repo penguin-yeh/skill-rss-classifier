@@ -36,6 +36,16 @@ does two purely mechanical things that don't need judgment:
    just to hit a quota — the floor exists to protect low-volume-but-active
    sources, not to pad out ones that haven't posted anything recent.
 
+   The floor is also only ever filled FROM articles published within the
+   last 7 days — even for a source that isn't stale overall, an individual
+   article older than 7 days is never used to top up its floor. A source
+   with only 1-2 recent articles legitimately floors at 1-2, not 3;
+   reaching into its older backlog to force a 3rd would misrepresent an
+   old piece as current coverage, which defeats the point of the floor
+   (visibility into what a source is doing lately, not padding a count).
+   Undated articles (unparseable pubDate) get the benefit of the doubt and
+   are still eligible, same as in the staleness check above.
+
 Input: a JSON file shaped like rss_classifier.py's output —
   {"domains": {"<name>": {"todays_articles": [...], "other_articles": [...]}, ...}}
 (the domain names/grouping can be your re-clustered version, not necessarily
@@ -121,6 +131,12 @@ def cap_with_source_floor(articles: list[dict], cap: int, per_source_floor: int)
     exempt from the floor guarantee (see module docstring point 3) — it's
     left to fall out via ordinary score-based capping like any other
     article, which can drop it below the floor entirely.
+
+    The floor is filled only from that source's own articles published
+    within STALE_FLOOR_WINDOW (undated articles included, benefit of the
+    doubt) — an individual article older than the window is never pulled
+    in just to reach the floor count, even for a source that isn't stale
+    overall (see module docstring point 3).
     """
     if len(articles) <= cap:
         return sorted(articles, key=lambda a: a.get('_score', -1), reverse=True)
@@ -132,11 +148,16 @@ def cap_with_source_floor(articles: list[dict], cap: int, per_source_floor: int)
     for group in by_source.values():
         group.sort(key=lambda a: a.get('_score', -1), reverse=True)
 
+    def _is_recent(a: dict) -> bool:
+        d = _parse_article_datetime(a.get('date', ''))
+        return d is None or d >= now - STALE_FLOOR_WINDOW
+
     floor_picks = []
     for group in by_source.values():
         if _is_stale(group, now):
             continue
-        floor_picks.extend(group[:per_source_floor])
+        recent = [a for a in group if _is_recent(a)]
+        floor_picks.extend(recent[:per_source_floor])
     floor_ids = {id(a) for a in floor_picks}
 
     remaining = [a for a in articles if id(a) not in floor_ids]

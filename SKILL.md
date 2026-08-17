@@ -163,6 +163,10 @@ fabricate signal that isn't there:
   most recent article is older than 7 days, it's not force-included and
   can legitimately end up below the floor (even absent) in the pool — a
   dead/slow feed shouldn't get manufactured presence just to hit a quota.
+  Even for a non-stale source, the floor is only ever filled from that
+  source's own articles published within the last 7 days — an individual
+  older article is never reached into just to pad the count up to 3. A
+  source with only 1-2 recent articles floors at 1-2, not 3.
 
 Extend `extract_objective_metric()` in `prepare_domain_payloads.py` (not the
 subagent prompts) if you add a feed that has real engagement data.
