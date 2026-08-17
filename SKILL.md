@@ -214,22 +214,29 @@ its own prompt containing:
   the title as a clickable link back to the original article — never
   fabricate or guess a URL; if an article genuinely has no link, say so
   rather than inventing one
-- **A hard quota, and it's mandatory, not optional: every source that
-  fetched successfully at all must be represented by at least 3 articles
-  somewhere in the final report, counting both the main Top N and the
-  額外閱讀 bonus section below.** Dropping a source entirely is *not* a
-  valid way to satisfy this — the only sources allowed to be absent are
-  ones in `failed_feeds` (Step 1) that never returned content in the first
-  place. If a source's real content is thin or off-topic for every domain
-  it could plausibly belong to, it still needs a home: attach it to the
-  domain it's least-badly related to, or — if truly nothing fits — ask the
-  user rather than silently omitting it. Before finalizing, cross-check the
-  full source list from Step 1's fetch against what actually appears
-  anywhere in the report; anything successfully fetched but missing is a
-  bug to fix, not an acceptable gap. Ranking/importance judgment stays
-  exactly as before (`objective_metric` first, else editorial judgment) —
-  the quota only decides *whether a source's 3rd (and any further topped-up)
-  pick is genuinely one of the domain's most important stories or not*:
+- **A quota, capped hard by recency: every source that fetched successfully
+  at all should be represented by at least 3 articles somewhere in the
+  final report (main Top N + 額外閱讀 combined) — but ONLY counting that
+  source's own articles published within the last 7 days.** The 7-day cap
+  is not a soft preference, it overrides the "at least 3" number whenever
+  they conflict: **never reach into a source's older-than-7-days backlog
+  just to hit 3.** If a source only has 1 or 2 qualifying articles within 7
+  days, the correct output is 1 or 2 for that source — not 3 padded out
+  with a stale pick. If a source has zero articles within 7 days, it's
+  legitimately absent from the report entirely (same footing as a
+  `failed_feeds` source for this purpose), and that's expected, not a bug
+  to fix. Every article that does appear — whether it's filling this quota
+  or not — must carry its real publish date per the date rules below, so
+  age is always checkable; when in doubt about whether a pick qualifies,
+  check its date against 7 days before including it. Subject to that cap,
+  dropping a source that *does* have ≥3 qualifying articles is still not
+  valid — cross-check the full source list from Step 1's fetch against
+  what appears anywhere in the report, and treat "successfully fetched,
+  has recent content, but missing from the report" as a bug. Ranking/
+  importance judgment stays exactly as before (`objective_metric` first,
+  else editorial judgment) — the quota only decides *whether a source's
+  3rd (and any further topped-up) pick is genuinely one of the domain's
+  most important stories or not*:
   - If it's genuinely newsworthy, it belongs in the numbered Top N like
     any other pick.
   - If it only exists to satisfy the quota and isn't actually important —
@@ -239,10 +246,10 @@ its own prompt containing:
     intro sentence describing what this batch is, then each item as a
     linked title with a single short clause (not a full 2-3 sentence
     summary) noting why it's here / what it's about. Never fabricate a
-    reason to include something, but remember the source itself is not
-    optional — pick its 3 least-thin available articles and say plainly
-    that they're here for coverage completeness rather than importance,
-    rather than omitting the source.
+    reason to include something, and never pick an item older than 7 days
+    to do it — pick from whatever the source has within the window (up to
+    3, possibly fewer) and say plainly that they're here for coverage
+    completeness rather than importance.
 - The exact output format below
 - An explicit instruction to write in Traditional Chinese
 
@@ -370,6 +377,25 @@ so clicking one title's link opened a different, unrelated story). A quick
 script that looks up each `link` used in the final draft and confirms the
 `title`/`date` you wrote matches what's actually in the parsed data catches
 this class of error before the reader does.
+
+**Same pass, also programmatically check every article's date against the
+7-day quota rule above** — for each source, count how many of its articles
+in the final report are dated within the last 7 days; if any source shows
+an article older than 7 days sitting in a quota-filled slot (i.e. the
+source has fewer than 3 articles within 7 days but 3 appear in the
+report), that's the exact bug described above and must be fixed by
+removing the stale pick, not left in because "it's already written." Don't
+eyeball this — a source with a dozen articles spanning months is easy to
+misjudge by reading dates in isolation; script the same check you used for
+link/title/date integrity.
+
+**Also verify the source-tally chart actually rendered as a bar chart, not
+a table that silently reverted to numbers-only** — grep the final HTML for
+the bar-row pattern from the template above (a `<td>` with both a
+`background:` and a `width:...%` in the same `style=`) and confirm it
+appears once per source row. If it's missing, the chart degraded back to a
+plain table somewhere in generation — a known failure mode — and must be
+rebuilt from the template, not patched around.
 
 If the final report is delivered somewhere that renders markup (an HTML
 email, a webpage, an artifact) rather than as plain text, render each
