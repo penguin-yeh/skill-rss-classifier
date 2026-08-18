@@ -403,146 +403,73 @@ article's title as a clickable link to its real `link` — that's the whole
 point of carrying the link through the pipeline. Never invent a URL for an
 article that didn't have one.
 
-**If delivering as an HTML email, every styled element must use an inline
-`style="..."` attribute — never a `<style>` block in `<head>`.** Gmail's
-web client (and most webmail) strips `<style>` blocks entirely on render;
-a normal webpage-style stylesheet produces an email that arrives with the
-right text and links but zero visual styling, which is a silent failure
-you won't see until you check the actual delivered message (checking your
-own draft HTML file isn't enough — it'll look fine there). This has
-actually happened in practice. There is no shortcut around it: every
-`<div>`, `<td>`, `<a>`, etc. that needs color, spacing, or layout needs its
-own `style="..."` attribute, even though that means the same visual rule
-gets repeated across many tags instead of defined once.
+### HTML email delivery — rendered by code, not hand-written
 
-**A specific bug class to guard against: don't confuse a tint color meant
-as a background with the text `color`.** This has actually happened in
-practice — a 評語 (commentary) box's light accent tint (e.g. `#f5f3ff`)
-was written as `color:#f5f3ff` instead of `background:#f5f3ff`, and with no
-`background` set at all the box fell back to the page's own light
-background, making the text nearly invisible; the box's `<strong>評語：</strong>`
-label was separately set to `color:#fff` (white), which is only legible on
-a solid dark/accent-colored background — on a light tint it's invisible
-too. Also watch for **duplicate `color:` declarations on the same
-`style="..."` attribute** (e.g. `style="color:#374151;...;color:#f5f3ff"`)
-— inline CSS has no cascade warning, the second one silently wins, and this
-is exactly how a body-text color gets clobbered by a background tint that
-was appended later without removing the first declaration. A safe, tested
-template for a 評語 box:
+**Do not hand-write the delivery HTML/CSS. `scripts/render_email.py` owns
+all of it.** Earlier versions of this skill had the orchestrator write the
+final HTML by hand each run, following prose CSS rules ("use inline
+`style=`", "don't confuse a tint with a text color", a worked markup
+example to imitate, etc.). In practice that drifted silently between runs
+even with those rules spelled out — the outer card border and background
+disappeared in one delivered email, a bar chart's `background` got dropped
+in another, a `color:` got duplicated in a third — because regenerating the
+same CSS from natural-language instructions on every run gives it a chance
+to come out slightly different each time, and nothing catches that before
+the email is already sent. None of the visual design is a judgment call
+that needs an LLM re-deriving it, so it now lives as Python string
+literals in `scripts/render_email.py`, which cannot drift run to run
+unless a human edits the file.
 
-```html
-<div style="background:#f5f3ff;border-radius:10px;padding:16px 18px;margin:20px 0 18px">
-  <strong style="color:#5b21b6">評語：</strong>
-  <span style="color:#374151;font-size:13.5px;line-height:1.9">...內文...</span>
-</div>
+Your job for this step is only to **assemble content into the payload
+JSON** the script expects — domain names, article counts, summaries,
+Top N items (title/link/date/summary, plus `objective_metric` and
+`tech_comparison` where they apply), 評語, optional 小額外閱讀, the
+source tally, `failed_feeds`, and the masthead meta lines. Run
+`python3 scripts/render_email.py --print-schema` to see the exact shape
+with example values, then write a payload file matching it (again, don't
+paste the full JSON into your own reply/transcript — write it straight to
+a file) and render:
+
+```bash
+python3 scripts/render_email.py /tmp/digest_payload.json --output /tmp/digest.html
 ```
 
-i.e. `background` for the tint, a saturated/dark shade of the same hue
-(not white, not the tint itself) for the label, and a normal dark gray
-(`#374151` or similar) for body text — never let any of the three collapse
-onto the same property. Before sending, grep the final HTML for
-`color:#fff` / `color:#ffffff` and confirm each one sits inside a `<div>`
-whose `background` is actually dark — and grep for any `style="..."` that
-contains `color:` twice.
+The script itself:
 
-### Visual template for HTML email delivery — "晨間電訊" masthead layout
+- Assigns each domain's "stamp color" automatically by rotation in
+  payload order (5 built-in hues; extend `STAMP_COLOR_ROTATION` in the
+  script, don't repeat #1, if a report ever needs more than 5)
+- Computes the bar-chart percentages and always emits both `width` and
+  `background` on the bar cell — the "table with no visible bar" failure
+  mode is structurally impossible now, not just discouraged in prose
+- Keeps the tint/label/body-text colors for 評語, 新舊比較, and 小額外閱讀
+  boxes on separate, fixed properties — there's no way for a background
+  tint to land on `color:` by accident since each is a distinct Python
+  constant (`TINT_BOX_BG` vs `BODY_TEXT` etc.), not a value typed fresh
+  each run
+- Runs a self-check on its own output before returning (no `<style>`
+  block, card border/background present, no `style=` with a duplicated
+  `color:`) and raises instead of silently shipping a bad render
 
-When delivering as an HTML email (or an artifact/webpage that should look
-like one), use this newspaper-wire-dispatch template rather than a generic
-card layout — it was designed and approved by the user specifically for
-this report. Everything below is inline `style="..."`, no `<style>` block,
-per the Gmail rule above.
-
-**Tokens:**
-
-- Paper background `#f2f0ea`, card background `#fffdf9`, hairline
-  `#ddd8cc`
-- Ink `#1c1b19` (headings/body), soft ink `#6b6459` (meta text)
-- Headline face: `Georgia,'Noto Serif TC',serif` — body/meta face:
-  `-apple-system,BlinkMacSystemFont,'PingFang TC','Microsoft JhengHei','Noto Sans TC',Helvetica,Arial,sans-serif`
-  — monospace utility face for eyebrow labels/dates/metrics:
-  `ui-monospace,SFMono-Regular,Consolas,monospace`
-- 評語 box: unchanged from the safe template above (`background:#f5f3ff`,
-  label `#5b21b6`, body `#374151`)
-- 新舊比較 box (Technology domain only): `background:#f6ecd9`,
-  left border `#9c6b12`, label `#7a5209`
-- 小額外閱讀 box: dashed `1px #ddd8cc` border, `background:#f7f5ef`
-
-**Each domain gets its own "stamp color"** — do not reuse one accent for
-every domain. Assign colors from this rotation in the order domains appear
-in the report (extend the rotation with a new hue at similar saturation/
-lightness if there are more than 5 domains — don't just repeat #1):
-
-1. 印章紅 `#b3402f`
-2. 鋼藍 `#2c5f7c`
-3. 藏青紫 `#5b4a8a`
-4. 赭綠 `#5c6b3f`
-5. 赭黃 `#8a6d1f`
-
-A domain's stamp color applies to exactly three things, consistently:
-its eyebrow tag background (`<td style="...background:<color>...">`), its
-Top N item numbers (`color:<color>`), and a 3px top border on its section
-container (`border-top:3px solid <color>`). Everything else (body text,
-hairlines, 評語/新舊比較/小額外閱讀 boxes) stays on the fixed tokens above
-regardless of domain — only those three elements rotate, so the palette
-reads as "same design, different section" rather than a different theme
-per domain. The `objective_metric` gold (`#9c6b12`) is fixed and never
-part of the rotation — it signals "this is a quantified metric," not a
-domain.
-
-**Structure**, top to bottom: masthead (eyebrow label "RSS Feed 主題分類與
-摘要" in ink, big serif title, date + methodology note + HN snapshot time
-in soft ink) → one section per domain (eyebrow tag + article count/Top N
-count on one row → serif summary paragraph → numbered Top N items with
-hairline separators, `objective_metric` articles get the gold metric line,
-Technology-domain items get the 新舊比較 box → 評語 box → optional 小額外
-閱讀 box) → closing source-tally bar chart with a `⚠️` line for `failed_feeds`.
-
-A full worked example with placeholder data lives at the artifact published
-during this design session — regenerate a fresh instance per real run
-rather than reusing static markup, since the actual number of domains,
-their names, and article counts differ every time.
+If a run ever needs a genuinely new visual element (a new box type, a
+layout change), **edit `render_email.py`** rather than describing the
+change in prose for the orchestrator to reproduce free-hand — that keeps
+the fix permanent instead of a one-time patch that regresses next run.
+Sanity-check a real render before sending by opening the output file and
+independently grepping it for the same three things the self-check
+enforces, in case the payload data itself (not the template) is what's
+wrong — e.g. confirm the tally's bar `<td>` rows number one per source in
+`source_tally`.
 
 Tally sources across the whole report — main Top N **plus** each domain's
-🗞️ 小額外閱讀 combined — and append it **as an actual horizontal bar
-chart, not a plain numbers-only table.** This has previously gone wrong in
-practice — a vague "use a bar chart" instruction without a concrete markup
-example still produced a plain table, because in an HTML email a bar chart
-*is* a table underneath (there's no `<canvas>`/SVG-chart-library option
-under the inline-style-only constraint) and it's easy to stop at just the
-label+number columns and skip the part that actually draws a bar. Use this
-exact structure per source row — a nested one-row table whose first `<td>`
-is colored and width-percentaged to the source's count relative to the
-tally's max count, so the colored cell itself *is* the bar:
-
-```html
-<table role="presentation" width="100%" style="border-collapse:collapse;margin-top:10px">
-  <tr>
-    <td style="width:130px;padding:5px 8px;font-size:12.5px;color:#1c1b19;white-space:nowrap">[來源名稱]</td>
-    <td style="padding:5px 8px">
-      <table role="presentation" width="100%" style="border-collapse:collapse"><tr>
-        <td style="width:[pct]%;background:#1c1b19;height:11px;border-radius:2px;font-size:0;line-height:0">&nbsp;</td>
-        <td style="width:[100-pct]%;font-size:0;line-height:0">&nbsp;</td>
-      </tr></table>
-    </td>
-    <td style="width:28px;padding:5px 8px;font-size:12.5px;color:#6b6459;text-align:right">[count]</td>
-  </tr>
-  <!-- one row per source, sorted descending by count -->
-</table>
-```
-
-`[pct]` = `round(count / max_count * 100)`, clamped to a minimum of ~6 so a
-source with a small count still shows a visible sliver instead of an
-invisible 0-width cell. Sort rows descending by count so the chart reads
-top-to-bottom as a ranking. Because of the quota in Step 2, every
-*active* source that appears anywhere in the report should land at ≥3 in
-this tally; if one doesn't, that's a sign the quota wasn't actually applied
-somewhere and is worth double-checking before sending. The exception is a
-stale source (its most recent article is older than 7 days) — the floor is
-deliberately not enforced for those, so landing below 3 (or not appearing
-at all) is expected, not a bug. Label the tally clearly as
-"Top N + 小額外閱讀 合計" so it's not mistaken for a claim that the main
-highlight list itself is evenly spread — it isn't, and doesn't need to be.
+🗞️ 小額外閱讀 combined — into the `source_tally` list the script turns into
+the bar chart. Because of the quota in Step 2, every *active* source that
+appears anywhere in the report should land at ≥3 in this tally; if one
+doesn't, that's a sign the quota wasn't actually applied somewhere and is
+worth double-checking before sending. The exception is a stale source (its
+most recent article is older than 7 days) — the floor is deliberately not
+enforced for those, so landing below 3 (or not appearing at all) is
+expected, not a bug.
 
 ## Input format
 
