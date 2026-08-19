@@ -179,6 +179,13 @@ def render_bonus_reading(bonus):
 </div>"""
 
 
+def render_source_header(source_group, stamp):
+    """Subsection header for the priority domain's 'one subsection per
+    contributing source' layout — a small mono-caps label, tinted with the
+    domain's own stamp color, dropped in before that source's first item."""
+    return f"""  <div style="font-family:{FONT_MONO};font-size:11px;letter-spacing:1px;color:{stamp};text-transform:uppercase;margin:16px 0 2px;padding-top:10px">{esc(source_group)}</div>"""
+
+
 def render_domain(domain, index):
     stamp = stamp_color_for(index)
     name = esc(domain["name"])
@@ -187,10 +194,20 @@ def render_domain(domain, index):
     summary = esc(domain["summary"])
     is_technology = bool(domain.get("is_technology"))
 
-    items_html = "\n".join(
-        render_item(item, i + 1, is_technology)
-        for i, item in enumerate(domain["items"])
-    )
+    # Optional per-source subsection headers: when items carry a
+    # `source_group` field, emit a header each time it changes from the
+    # previous item, so the priority domain can render "one subsection per
+    # contributing source" instead of one flat list. Items without
+    # `source_group` render exactly as before (no headers at all).
+    item_parts = []
+    prev_group = None
+    for i, item in enumerate(domain["items"]):
+        group = item.get("source_group")
+        if group and group != prev_group:
+            item_parts.append(render_source_header(group, stamp))
+            prev_group = group
+        item_parts.append(render_item(item, i + 1, is_technology))
+    items_html = "\n".join(item_parts)
 
     commentary_html = ""
     if domain.get("commentary"):
