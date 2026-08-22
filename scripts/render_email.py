@@ -179,6 +179,15 @@ def render_bonus_reading(bonus):
 </div>"""
 
 
+def render_source_header(source_label, stamp):
+    return (
+        f'  <div style="font-family:{FONT_MONO};font-size:11.5px;'
+        f'letter-spacing:0.5px;color:{stamp};text-transform:uppercase;'
+        f'margin:16px 0 2px;padding-top:10px;border-top:1px solid {HAIRLINE}">'
+        f"{esc(source_label)}</div>"
+    )
+
+
 def render_domain(domain, index):
     stamp = stamp_color_for(index)
     name = esc(domain["name"])
@@ -187,10 +196,21 @@ def render_domain(domain, index):
     summary = esc(domain["summary"])
     is_technology = bool(domain.get("is_technology"))
 
-    items_html = "\n".join(
-        render_item(item, i + 1, is_technology)
-        for i, item in enumerate(domain["items"])
-    )
+    # Optional per-source subsections: when items carry a "source_label",
+    # group consecutive items under that source with a small heading
+    # instead of one flat list. Items without source_label render exactly
+    # as before (flat list) — this is fully backward compatible.
+    parts = []
+    last_source = object()
+    for i, item in enumerate(domain["items"]):
+        src_label = item.get("source_label")
+        if src_label and src_label != last_source:
+            parts.append(render_source_header(src_label, stamp))
+            last_source = src_label
+        elif not src_label:
+            last_source = object()
+        parts.append(render_item(item, i + 1, is_technology))
+    items_html = "\n".join(parts)
 
     commentary_html = ""
     if domain.get("commentary"):
