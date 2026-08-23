@@ -179,6 +179,14 @@ def render_bonus_reading(bonus):
 </div>"""
 
 
+def render_source_heading(source_name, stamp):
+    return (
+        f'  <div style="font-family:{FONT_MONO};font-size:11px;letter-spacing:0.5px;'
+        f'color:{stamp};text-transform:uppercase;margin:16px 0 2px;padding-top:10px;'
+        f'border-top:1px solid {HAIRLINE}">{esc(source_name)}</div>'
+    )
+
+
 def render_domain(domain, index):
     stamp = stamp_color_for(index)
     name = esc(domain["name"])
@@ -187,10 +195,23 @@ def render_domain(domain, index):
     summary = esc(domain["summary"])
     is_technology = bool(domain.get("is_technology"))
 
-    items_html = "\n".join(
-        render_item(item, i + 1, is_technology)
-        for i, item in enumerate(domain["items"])
-    )
+    if domain.get("group_by_source"):
+        # One subsection per contributing source (priority domain only),
+        # while Top N numbering stays continuous across the whole list.
+        parts = []
+        seen_sources = set()
+        for i, item in enumerate(domain["items"]):
+            src = item.get("source") or ""
+            if src and src not in seen_sources:
+                seen_sources.add(src)
+                parts.append(render_source_heading(src, stamp))
+            parts.append(render_item(item, i + 1, is_technology))
+        items_html = "\n".join(parts)
+    else:
+        items_html = "\n".join(
+            render_item(item, i + 1, is_technology)
+            for i, item in enumerate(domain["items"])
+        )
 
     commentary_html = ""
     if domain.get("commentary"):
@@ -324,6 +345,7 @@ PAYLOAD_SCHEMA_EXAMPLE = {
             "article_count": 234,
             "is_technology": True,
             "summary": "今天的重點是……",
+            "group_by_source": False,
             "items": [
                 {
                     "title": "文章標題",
@@ -336,6 +358,9 @@ PAYLOAD_SCHEMA_EXAMPLE = {
                         "new": "新在哪裡",
                         "benefit": "解決了什麼問題",
                     },
+                    "source": "Hacker News Front Page  # optional; if group_by_source=True, "
+                    "items are grouped into one subsection per source (numbering stays "
+                    "continuous), used for the priority domain's deeper layout",
                 }
             ],
             "commentary": "今天新聞內容本身的觀察。",
