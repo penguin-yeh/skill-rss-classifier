@@ -13,6 +13,7 @@
   <outline type="rss" xmlUrl="https://news.google.com/rss/search?q=GQ+Taiwan&amp;hl=zh-TW&amp;gl=TW&amp;ceid=TW:zh-Hant" text="GQ" title="GQ"></outline>
   <outline type="rss" xmlUrl="http://feeds.feedburner.com/thechangelog" text="Changelog" title="Changelog"></outline>
   <outline type="rss" xmlUrl="https://hnrss.org/frontpage" text="Hacker News Front Page" title="Hacker News Front Page"></outline>
+  <outline type="rss" xmlUrl="https://tldr.tech/api/rss/tech" text="TLDR" title="TLDR"></outline>
   <outline type="rss" xmlUrl="https://blog.cloudflare.com/rss" text=" The Cloudflare Blog " title=" The Cloudflare Blog "></outline>
   <outline type="rss" xmlUrl="https://github.com/blog/all.atom" text="The GitHub Blog" title="The GitHub Blog"></outline>
   <outline type="rss" xmlUrl="http://feeds.feedburner.com/d0od" text="OMG! Ubuntu!" title="OMG! Ubuntu!"></outline>
