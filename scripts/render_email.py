@@ -179,6 +179,16 @@ def render_bonus_reading(bonus):
 </div>"""
 
 
+def render_source_header(text):
+    """A small subsection heading grouping consecutive Top N items by their
+    contributing source. Used for a priority domain that wants "one
+    subsection per contributing source" instead of one flat numbered list
+    (SKILL.md Step 2's priority-domain note) — optional per item via
+    `source_header`; a domain that doesn't set it renders as a flat list
+    exactly as before."""
+    return f"""  <div style="font-family:{FONT_MONO};font-size:11px;letter-spacing:1px;color:{SOFT_INK};text-transform:uppercase;margin:18px 0 2px">{esc(text)}</div>"""
+
+
 def render_domain(domain, index):
     stamp = stamp_color_for(index)
     name = esc(domain["name"])
@@ -187,10 +197,15 @@ def render_domain(domain, index):
     summary = esc(domain["summary"])
     is_technology = bool(domain.get("is_technology"))
 
-    items_html = "\n".join(
-        render_item(item, i + 1, is_technology)
-        for i, item in enumerate(domain["items"])
-    )
+    item_blocks = []
+    prev_header = None
+    for i, item in enumerate(domain["items"]):
+        header = item.get("source_header")
+        if header and header != prev_header:
+            item_blocks.append(render_source_header(header))
+        prev_header = header
+        item_blocks.append(render_item(item, i + 1, is_technology))
+    items_html = "\n".join(item_blocks)
 
     commentary_html = ""
     if domain.get("commentary"):
@@ -336,6 +351,7 @@ PAYLOAD_SCHEMA_EXAMPLE = {
                         "new": "新在哪裡",
                         "benefit": "解決了什麼問題",
                     },
+                    "source_header": "Hacker News（可選；priority 領域用來把 Top N 依來源分成子區塊，非優先領域可省略此欄位維持原本的單一清單）",
                 }
             ],
             "commentary": "今天新聞內容本身的觀察。",
