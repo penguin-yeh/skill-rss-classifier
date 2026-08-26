@@ -179,6 +179,15 @@ def render_bonus_reading(bonus):
 </div>"""
 
 
+def render_source_header(label):
+    """Optional subsection divider grouping consecutive Top N items by their
+    contributing source. Used only for domains that opt in via a `source`
+    field on each item (e.g. a priority domain with source-grouped
+    subsections instead of one flat list) — numbering stays continuous
+    across the whole Top N regardless."""
+    return f"""  <div style="font-family:{FONT_MONO};font-size:11px;letter-spacing:1px;color:{SOFT_INK};text-transform:uppercase;margin:16px 0 2px;padding-top:8px">{esc(label)}</div>"""
+
+
 def render_domain(domain, index):
     stamp = stamp_color_for(index)
     name = esc(domain["name"])
@@ -187,10 +196,15 @@ def render_domain(domain, index):
     summary = esc(domain["summary"])
     is_technology = bool(domain.get("is_technology"))
 
-    items_html = "\n".join(
-        render_item(item, i + 1, is_technology)
-        for i, item in enumerate(domain["items"])
-    )
+    item_parts = []
+    last_source = object()
+    for i, item in enumerate(domain["items"]):
+        src = item.get("source")
+        if src and src != last_source:
+            item_parts.append(render_source_header(src))
+        last_source = src if src else last_source
+        item_parts.append(render_item(item, i + 1, is_technology))
+    items_html = "\n".join(item_parts)
 
     commentary_html = ""
     if domain.get("commentary"):
