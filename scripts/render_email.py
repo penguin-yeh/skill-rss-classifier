@@ -157,6 +157,17 @@ def render_item(item, index, is_technology):
   </div>"""
 
 
+def render_source_subheader(source_name, stamp):
+    """Subsection header used only for domains that opt into grouping their
+    Top N by contributing source (item field `source_section`) instead of
+    one flat interleaved list — e.g. the priority domain's extra depth per
+    SKILL.md Step 2. Numbering stays global/continuous across subsections;
+    this only inserts a visual break + label between source groups."""
+    return f"""  <div style="margin:16px 0 2px;padding-top:2px">
+    <span style="font-family:{FONT_MONO};font-size:11px;letter-spacing:1px;color:{stamp};border-bottom:1px solid {stamp};padding-bottom:2px">{esc(source_name)}</span>
+  </div>"""
+
+
 def render_bonus_reading(bonus):
     if not bonus or not bonus.get("items"):
         return ""
@@ -187,10 +198,15 @@ def render_domain(domain, index):
     summary = esc(domain["summary"])
     is_technology = bool(domain.get("is_technology"))
 
-    items_html = "\n".join(
-        render_item(item, i + 1, is_technology)
-        for i, item in enumerate(domain["items"])
-    )
+    item_parts = []
+    last_section = object()  # sentinel, never equal to a real section name
+    for i, item in enumerate(domain["items"]):
+        section = item.get("source_section")
+        if section and section != last_section:
+            item_parts.append(render_source_subheader(section, stamp))
+        last_section = section
+        item_parts.append(render_item(item, i + 1, is_technology))
+    items_html = "\n".join(item_parts)
 
     commentary_html = ""
     if domain.get("commentary"):
