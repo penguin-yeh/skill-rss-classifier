@@ -61,6 +61,8 @@ COMPARISON_LABEL = "#7a5209"
 BONUS_BG = "#f7f5ef"          # 小額外閱讀 box
 BONUS_BORDER = HAIRLINE
 
+SOURCE_HEADING = SOFT_INK      # per-source subsection heading (priority domains)
+
 METRIC_GOLD = "#9c6b12"       # objective_metric line — fixed, never part of
                                # the domain stamp-color rotation
 
@@ -179,6 +181,27 @@ def render_bonus_reading(bonus):
 </div>"""
 
 
+def render_items_grouped_by_source(items, is_technology):
+    """Render items as one subsection per contributing source (headed by
+    each item's `source_section`), while keeping a single continuous
+    1..N numbering across all subsections combined — used for a priority
+    domain that needs source-grouped depth instead of one flat list.
+    Falls back to a flat list if items carry no `source_section`."""
+    parts = []
+    current_section = object()  # sentinel that never equals a real value
+    for i, item in enumerate(items):
+        section = item.get("source_section")
+        if section and section != current_section:
+            current_section = section
+            parts.append(
+                f'  <div style="font-family:{FONT_MONO};font-size:11.5px;'
+                f'letter-spacing:1px;color:{SOURCE_HEADING};text-transform:uppercase;'
+                f'margin:16px 0 2px">{esc(section)}</div>'
+            )
+        parts.append(render_item(item, i + 1, is_technology))
+    return "\n".join(parts)
+
+
 def render_domain(domain, index):
     stamp = stamp_color_for(index)
     name = esc(domain["name"])
@@ -187,10 +210,7 @@ def render_domain(domain, index):
     summary = esc(domain["summary"])
     is_technology = bool(domain.get("is_technology"))
 
-    items_html = "\n".join(
-        render_item(item, i + 1, is_technology)
-        for i, item in enumerate(domain["items"])
-    )
+    items_html = render_items_grouped_by_source(domain["items"], is_technology)
 
     commentary_html = ""
     if domain.get("commentary"):
@@ -336,6 +356,10 @@ PAYLOAD_SCHEMA_EXAMPLE = {
                         "new": "新在哪裡",
                         "benefit": "解決了什麼問題",
                     },
+                    "source_section": "Hacker News",  # optional: groups the
+                    # Top N into one subsection per contributing source
+                    # (priority-domain depth) while numbering stays 1..N
+                    # continuous across subsections; omit for a flat list.
                 }
             ],
             "commentary": "今天新聞內容本身的觀察。",
