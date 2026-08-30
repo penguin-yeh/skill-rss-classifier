@@ -156,6 +156,18 @@ fabricate signal that isn't there:
   engagement number in the feed itself; don't ask a subagent to estimate one
   for sources that don't provide it, and don't treat a source's total volume
   or its publisher's general reputation as a substitute metric.
+- **Hacker News links point at the discussion, not the external article.**
+  hnrss's `<link>` element is the URL of the story being submitted (a
+  huggingface.co page, a random blog, etc.) — correct for most feeds, but
+  not what a reader wants from a *Hacker News* pick, where the point is the
+  thread itself. `redirect_hn_link_to_discussion()` swaps `link` to the
+  `news.ycombinator.com/item?id=...` comments URL embedded in the
+  description, and preserves the original article URL in a new
+  `external_link` field so it isn't lost — cite it inline in the summary
+  (e.g. "原文出處：example.com") rather than dropping it. This only applies
+  to `source_title == 'Hacker News Front Page'`; every other source keeps
+  its `link` as the article URL, per the "include the article's link"
+  instruction below.
 - **Proportional Top N per domain**, not a flat "Top 5" everywhere. A
   domain with 230 articles and a domain with 20 articles convey very
   different amounts of competition — a flat Top 5 would mean "picked from
@@ -213,7 +225,11 @@ its own prompt containing:
   alongside its title in the output, so the final report/email can render
   the title as a clickable link back to the original article — never
   fabricate or guess a URL; if an article genuinely has no link, say so
-  rather than inventing one
+  rather than inventing one. For Hacker News Front Page articles specifically,
+  `link` has already been redirected to the HN discussion thread (see Step
+  1.6) — use it as-is as the title's link, and if the article also carries
+  `external_link` (the original story URL), mention it inline in the summary
+  rather than dropping it
 - **A quota, capped hard by recency: every source that fetched successfully
   at all should be represented by at least 3 articles somewhere in the
   final report (main Top N + 額外閱讀 combined) — but ONLY counting that
