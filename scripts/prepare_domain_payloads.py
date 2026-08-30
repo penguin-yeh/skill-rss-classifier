@@ -90,8 +90,36 @@ def extract_objective_metric(article: dict):
     return None, None
 
 
+def redirect_hn_link_to_discussion(article: dict):
+    """For Hacker News Front Page entries, point `link` at the HN discussion
+    thread instead of the external article the submission is about.
+
+    hnrss's <link> element is the external article URL — useful for most
+    feeds, but wrong for a link a reader clicks from a digest of *Hacker
+    News*: the point of an HN pick is the discussion, not just the story.
+    The comments URL (news.ycombinator.com/item?id=...) is embedded in the
+    description as "Comments URL: <a href="...">". When present, swap it in
+    as `link` and preserve the original article URL as `external_link` so
+    it isn't lost — subagents can still cite it inline in the summary.
+    Leave the article alone if the description doesn't have a comments URL
+    (e.g. a rare HN entry with no discussion yet).
+    """
+    if article.get('source_title') != 'Hacker News Front Page':
+        return
+    desc = article.get('description', '') or ''
+    m = re.search(r'Comments URL:\s*<a href="([^"]+)"', desc)
+    if not m:
+        return
+    discussion_url = m.group(1)
+    original_link = article.get('link')
+    if original_link and original_link != discussion_url:
+        article['external_link'] = original_link
+    article['link'] = discussion_url
+
+
 def annotate(articles: list[dict]):
     for a in articles:
+        redirect_hn_link_to_discussion(a)
         metric, score = extract_objective_metric(a)
         if metric:
             a['objective_metric'] = metric
