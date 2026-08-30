@@ -179,6 +179,16 @@ def render_bonus_reading(bonus):
 </div>"""
 
 
+def render_source_header(source_name, stamp):
+    """Subsection header grouping consecutive Top N items by contributing
+    source — used only when a domain opts in via `grouped_by_source` (the
+    priority domain gets this per SKILL.md's "one subsection per
+    contributing source instead of a flat list" instruction). Numbering
+    in render_item stays sequential across the whole Top N regardless of
+    these headers."""
+    return f"""  <div style="font-family:{FONT_MONO};font-size:11px;letter-spacing:1px;color:{stamp};text-transform:uppercase;margin:16px 0 2px;padding-top:10px;border-top:1px solid {HAIRLINE}">{esc(source_name)}</div>"""
+
+
 def render_domain(domain, index):
     stamp = stamp_color_for(index)
     name = esc(domain["name"])
@@ -186,11 +196,18 @@ def render_domain(domain, index):
     top_n = len(domain["items"])
     summary = esc(domain["summary"])
     is_technology = bool(domain.get("is_technology"))
+    grouped_by_source = bool(domain.get("grouped_by_source"))
 
-    items_html = "\n".join(
-        render_item(item, i + 1, is_technology)
-        for i, item in enumerate(domain["items"])
-    )
+    parts = []
+    prev_source = None
+    for i, item in enumerate(domain["items"]):
+        if grouped_by_source:
+            src_label = item.get("source_label")
+            if src_label and src_label != prev_source:
+                parts.append(render_source_header(src_label, stamp))
+                prev_source = src_label
+        parts.append(render_item(item, i + 1, is_technology))
+    items_html = "\n".join(parts)
 
     commentary_html = ""
     if domain.get("commentary"):
@@ -323,6 +340,7 @@ PAYLOAD_SCHEMA_EXAMPLE = {
             "name": "科技與軟體工程",
             "article_count": 234,
             "is_technology": True,
+            "grouped_by_source": True,
             "summary": "今天的重點是……",
             "items": [
                 {
@@ -330,6 +348,7 @@ PAYLOAD_SCHEMA_EXAMPLE = {
                     "link": "https://example.com/article",
                     "date": "2026-08-17",
                     "summary": "2-3 句具體摘要。",
+                    "source_label": "Hacker News Front Page",
                     "objective_metric": "依 Hacker News 熱度：74讚/28留言排序",
                     "tech_comparison": {
                         "before": "先前做法",
