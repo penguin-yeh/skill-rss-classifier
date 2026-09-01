@@ -72,6 +72,7 @@ STAMP_COLOR_ROTATION = [
     "#5b4a8a",  # 藏青紫
     "#5c6b3f",  # 赭綠
     "#8a6d1f",  # 赭黃
+    "#3f7a68",  # 松石綠
 ]
 
 MASTHEAD_TITLE = "Penguin 每日報報"
@@ -166,9 +167,11 @@ def render_bonus_reading(bonus):
         title = esc(it["title"])
         link = html.escape(it["link"], quote=True)
         note = esc(it.get("note") or "")
+        date = esc(it.get("date") or "")
+        date_span = f' <span style="color:{SOFT_INK}">[{date}]</span>' if date else ""
         rows.append(
             f'  ・<a href="{link}" style="color:{INK};text-decoration:underline">{title}</a>'
-            f' <span style="color:{SOFT_INK}">— {note}</span>'
+            f'{date_span} <span style="color:{SOFT_INK}">— {note}</span>'
         )
     rows_html = "<br>\n".join(rows)
     return f"""<div style="background:{BONUS_BG};border:1px dashed {BONUS_BORDER};border-radius:8px;padding:12px 16px;margin:14px 0 0">
@@ -370,7 +373,7 @@ PAYLOAD_SCHEMA_EXAMPLE = {
             "bonus_reading": {
                 "intro": "以下文章未進入 Top N，但為呈現來源完整報導樣貌一併收錄。",
                 "items": [
-                    {"title": "次要文章", "link": "https://example.com/b", "note": "湊足保底"}
+                    {"title": "次要文章", "link": "https://example.com/b", "date": "2026-08-17", "note": "湊足保底"}
                 ],
             },
         }
