@@ -141,7 +141,7 @@ def render_item(item, index, is_technology):
     cmp = item.get("tech_comparison")
     if is_technology and cmp:
         comparison_html = f"""
-    <div style="background:{COMPARISON_BG};border-left:3px solid {COMPARISON_BORDER};border-radius:0 6px 6px 0;padding:10px 14px;margin:8px 0 4px;font-family:{FONT_SANS};font-size:12.5px;color:{BODY_TEXT};line-height:1.8">
+    <div style="background-color:{COMPARISON_BG};border-left:3px solid {COMPARISON_BORDER};border-radius:0 6px 6px 0;padding:10px 14px;margin:8px 0 4px;font-family:{FONT_SANS};font-size:12.5px;color:{BODY_TEXT};line-height:1.8">
       <strong style="color:{COMPARISON_LABEL}">新舊比較：</strong>
       <strong>先前：</strong>{esc(cmp['before'])}
       <strong>新在哪：</strong>{esc(cmp['new'])}
@@ -174,7 +174,7 @@ def render_bonus_reading(bonus):
             f'{date_span} <span style="color:{SOFT_INK}">— {note}</span>'
         )
     rows_html = "<br>\n".join(rows)
-    return f"""<div style="background:{BONUS_BG};border:1px dashed {BONUS_BORDER};border-radius:8px;padding:12px 16px;margin:14px 0 0">
+    return f"""<div style="background-color:{BONUS_BG};border:1px dashed {BONUS_BORDER};border-radius:8px;padding:12px 16px;margin:14px 0 0">
   <div style="font-family:{FONT_SANS};font-size:12.5px;color:{SOFT_INK};margin:0 0 8px">🗞️ <strong style="color:{INK}">小額外閱讀：</strong>{intro}</div>
   <div style="font-family:{FONT_SANS};font-size:12.5px;color:{INK};line-height:1.9">
 {rows_html}
@@ -226,7 +226,7 @@ def render_domain(domain, index):
     commentary_html = ""
     if domain.get("commentary"):
         commentary_html = f"""
-<div style="background:{TINT_BOX_BG};border-radius:10px;padding:16px 18px;margin:20px 0 18px">
+<div style="background-color:{TINT_BOX_BG};border-radius:10px;padding:16px 18px;margin:20px 0 18px">
   <strong style="color:{TINT_BOX_LABEL}">評語：</strong>
   <span style="color:{BODY_TEXT};font-size:13.5px;line-height:1.9;font-family:{FONT_SANS}">{esc(domain['commentary'])}</span>
 </div>"""
@@ -235,7 +235,7 @@ def render_domain(domain, index):
 
     return f"""<div style="padding:24px 30px;border-top:3px solid {stamp}">
   <table role="presentation" style="border-collapse:collapse;margin:0 0 10px"><tr>
-    <td style="background:{stamp};border-radius:3px;padding:4px 10px"><span style="font-family:{FONT_MONO};font-size:11px;color:#fff;letter-spacing:0.5px">{name}</span></td>
+    <td style="background-color:{stamp};border-radius:3px;padding:4px 10px"><span style="font-family:{FONT_MONO};font-size:11px;color:#fff;letter-spacing:0.5px">{name}</span></td>
     <td style="padding:0 0 0 10px;font-family:{FONT_MONO};font-size:12px;color:{SOFT_INK}">{article_count} 篇 → Top {top_n}</td>
   </tr></table>
   <div style="font-family:{FONT_SERIF};font-size:14.5px;line-height:1.9;color:{INK};margin:0 0 6px">{summary}</div>
@@ -258,7 +258,7 @@ def render_tally_chart(tally):
       <td style="width:130px;padding:5px 8px;font-size:12.5px;color:{INK};white-space:nowrap;font-family:{FONT_SANS}">{esc(r['name'])}</td>
       <td style="padding:5px 8px">
         <table role="presentation" width="100%" style="border-collapse:collapse"><tr>
-          <td style="width:{pct}%;background:{INK};height:11px;border-radius:2px;font-size:0;line-height:0">&nbsp;</td>
+          <td style="width:{pct}%;background-color:{INK};height:11px;border-radius:2px;font-size:0;line-height:0">&nbsp;</td>
           <td style="width:{rest}%;font-size:0;line-height:0">&nbsp;</td>
         </tr></table>
       </td>
@@ -294,8 +294,8 @@ def render_email(data):
         part for part in [masthead, excluded, failed, domains_html, tally, footer] if part
     )
 
-    html_out = f"""<div style="padding:32px 12px;font-family:{FONT_SANS};background:{PAPER_BG}">
-<div style="max-width:680px;margin:0 auto;background:{CARD_BG};border:1px solid {HAIRLINE}">
+    html_out = f"""<div style="padding:32px 12px;font-family:{FONT_SANS};background-color:{PAPER_BG}">
+<div style="max-width:680px;margin:0 auto;background-color:{CARD_BG};border:1px solid {HAIRLINE}">
 {body}
 </div>
 </div>"""
@@ -317,7 +317,7 @@ def _self_check(html_out):
         "A <style> block snuck into the output — Gmail strips these; "
         "everything must be inline style=."
     )
-    assert f"background:{CARD_BG}" in html_out, "Card background token missing."
+    assert f"background-color:{CARD_BG}" in html_out, "Card background token missing."
     assert f"border:1px solid {HAIRLINE}" in html_out, "Outer card border missing."
 
     # No style="" attribute may declare `color:` twice.
@@ -335,7 +335,7 @@ def _self_check(html_out):
             raise AssertionError(f"Duplicate color: in one style attribute: {style_val!r}")
 
     # Every bar-chart bar cell must carry both a background and a width.
-    for m in re.finditer(r'<td style="width:(\d+)%;background:', html_out):
+    for m in re.finditer(r'<td style="width:(\d+)%;background-color:', html_out):
         pass  # presence of this pattern at least once per row is checked by construction
 
 
