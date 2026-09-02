@@ -179,6 +179,15 @@ def render_bonus_reading(bonus):
 </div>"""
 
 
+def render_source_heading(source_name):
+    """A small divider label used to group a domain's Top N items by
+    contributing source, for domains with group_by_source: true (e.g. the
+    priority domain, which needs 'one subsection per contributing source
+    instead of one flat list'). Numbering in render_item stays global/
+    continuous across groups — this only adds a visual label between them."""
+    return f"""  <div style="margin:14px 0 2px;padding-top:6px;font-family:{FONT_MONO};font-size:11px;letter-spacing:1px;color:{SOFT_INK};text-transform:uppercase">◆ {esc(source_name)}</div>"""
+
+
 def render_domain(domain, index):
     stamp = stamp_color_for(index)
     name = esc(domain["name"])
@@ -186,11 +195,23 @@ def render_domain(domain, index):
     top_n = len(domain["items"])
     summary = esc(domain["summary"])
     is_technology = bool(domain.get("is_technology"))
+    group_by_source = bool(domain.get("group_by_source"))
 
-    items_html = "\n".join(
-        render_item(item, i + 1, is_technology)
-        for i, item in enumerate(domain["items"])
-    )
+    if group_by_source:
+        parts = []
+        seen_sources = []
+        for i, item in enumerate(domain["items"]):
+            src = item.get("source") or ""
+            if src not in seen_sources:
+                seen_sources.append(src)
+                parts.append(render_source_heading(src))
+            parts.append(render_item(item, i + 1, is_technology))
+        items_html = "\n".join(parts)
+    else:
+        items_html = "\n".join(
+            render_item(item, i + 1, is_technology)
+            for i, item in enumerate(domain["items"])
+        )
 
     commentary_html = ""
     if domain.get("commentary"):
@@ -323,6 +344,7 @@ PAYLOAD_SCHEMA_EXAMPLE = {
             "name": "科技與軟體工程",
             "article_count": 234,
             "is_technology": True,
+            "group_by_source": True,
             "summary": "今天的重點是……",
             "items": [
                 {
@@ -331,6 +353,7 @@ PAYLOAD_SCHEMA_EXAMPLE = {
                     "date": "2026-08-17",
                     "summary": "2-3 句具體摘要。",
                     "objective_metric": "依 Hacker News 熱度：74讚/28留言排序",
+                    "source": "Hacker News",
                     "tech_comparison": {
                         "before": "先前做法",
                         "new": "新在哪裡",
