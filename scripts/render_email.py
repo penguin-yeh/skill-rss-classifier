@@ -179,18 +179,46 @@ def render_bonus_reading(bonus):
 </div>"""
 
 
+def render_source_sections(sections, is_technology, start_index=1):
+    """Render a priority domain's Top N grouped into one subsection per
+    contributing source, instead of one flat numbered list. Numbering keeps
+    counting across the whole domain (1..N) so "Top N" still reads as one
+    ranked list — sections are just how it's visually organized, not a
+    reset of the ranking.
+
+    `sections` is [{"source_name": "...", "items": [item, ...]}, ...].
+    """
+    blocks = []
+    idx = start_index
+    for sec in sections:
+        src_name = esc(sec.get("source_name") or "")
+        sec_items_html = "\n".join(
+            render_item(item, idx + i, is_technology)
+            for i, item in enumerate(sec.get("items") or [])
+        )
+        idx += len(sec.get("items") or [])
+        blocks.append(f"""  <div style="font-family:{FONT_SANS};font-size:12.5px;font-weight:700;color:{SOFT_INK};letter-spacing:0.5px;margin:16px 0 2px;padding-top:10px;border-top:1px solid {HAIRLINE}">▸ {src_name}</div>
+{sec_items_html}""")
+    return "\n".join(blocks)
+
+
 def render_domain(domain, index):
     stamp = stamp_color_for(index)
     name = esc(domain["name"])
     article_count = domain["article_count"]
-    top_n = len(domain["items"])
-    summary = esc(domain["summary"])
     is_technology = bool(domain.get("is_technology"))
+    sections = domain.get("source_sections")
 
-    items_html = "\n".join(
-        render_item(item, i + 1, is_technology)
-        for i, item in enumerate(domain["items"])
-    )
+    if sections:
+        top_n = sum(len(sec.get("items") or []) for sec in sections)
+        items_html = render_source_sections(sections, is_technology)
+    else:
+        top_n = len(domain["items"])
+        items_html = "\n".join(
+            render_item(item, i + 1, is_technology)
+            for i, item in enumerate(domain["items"])
+        )
+    summary = esc(domain["summary"])
 
     commentary_html = ""
     if domain.get("commentary"):
@@ -337,6 +365,14 @@ PAYLOAD_SCHEMA_EXAMPLE = {
                         "benefit": "解決了什麼問題",
                     },
                 }
+            ],
+            # Optional: for a priority domain, replace the flat "items" list
+            # above with "source_sections" — one subsection per contributing
+            # source, each with its own "items" (same item shape). Numbering
+            # keeps counting 1..N across the whole domain; only "items" or
+            # "source_sections" is needed, not both.
+            "_source_sections_example": [
+                {"source_name": "Hacker News", "items": ["...same item shape..."]}
             ],
             "commentary": "今天新聞內容本身的觀察。",
             "bonus_reading": {
