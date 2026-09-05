@@ -127,6 +127,10 @@ def render_failed_feeds(failed_feeds):
 </div>"""
 
 
+def render_source_subhead(source_name, stamp):
+    return f"""  <div style="font-family:{FONT_MONO};font-size:11.5px;letter-spacing:0.5px;color:{stamp};text-transform:uppercase;margin:16px 0 2px;padding-top:8px">{esc(source_name)}</div>"""
+
+
 def render_item(item, index, is_technology):
     title = esc(item["title"])
     link = html.escape(item["link"], quote=True)
@@ -187,10 +191,22 @@ def render_domain(domain, index):
     summary = esc(domain["summary"])
     is_technology = bool(domain.get("is_technology"))
 
-    items_html = "\n".join(
-        render_item(item, i + 1, is_technology)
-        for i, item in enumerate(domain["items"])
-    )
+    group_by_source = bool(domain.get("group_by_source"))
+    if group_by_source:
+        parts = []
+        last_source = None
+        for i, item in enumerate(domain["items"]):
+            src = item.get("source")
+            if src and src != last_source:
+                parts.append(render_source_subhead(src, stamp))
+                last_source = src
+            parts.append(render_item(item, i + 1, is_technology))
+        items_html = "\n".join(parts)
+    else:
+        items_html = "\n".join(
+            render_item(item, i + 1, is_technology)
+            for i, item in enumerate(domain["items"])
+        )
 
     commentary_html = ""
     if domain.get("commentary"):
@@ -324,12 +340,14 @@ PAYLOAD_SCHEMA_EXAMPLE = {
             "article_count": 234,
             "is_technology": True,
             "summary": "今天的重點是……",
+            "group_by_source": True,
             "items": [
                 {
                     "title": "文章標題",
                     "link": "https://example.com/article",
                     "date": "2026-08-17",
                     "summary": "2-3 句具體摘要。",
+                    "source": "Hacker News",
                     "objective_metric": "依 Hacker News 熱度：74讚/28留言排序",
                     "tech_comparison": {
                         "before": "先前做法",
