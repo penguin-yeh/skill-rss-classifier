@@ -179,18 +179,43 @@ def render_bonus_reading(bonus):
 </div>"""
 
 
+def render_source_sections(sections, is_technology):
+    """Render a domain's Top N grouped into one subsection per contributing
+    source, instead of one flat numbered list. Numbering stays continuous
+    across the whole domain (1..N) so it still reads as one Top N list,
+    just organized by source. Used for priority domains that need deeper,
+    source-attributed structure (see SKILL.md's priority-domain rule)."""
+    parts = []
+    counter = 0
+    for section in sections:
+        src_name = esc(section["source"])
+        parts.append(
+            f'  <div style="font-family:{FONT_MONO};font-size:11.5px;'
+            f'letter-spacing:1px;color:{SOFT_INK};text-transform:uppercase;'
+            f'margin:14px 0 2px">・ {src_name}</div>'
+        )
+        for item in section["items"]:
+            counter += 1
+            parts.append(render_item(item, counter, is_technology))
+    return "\n".join(parts), counter
+
+
 def render_domain(domain, index):
     stamp = stamp_color_for(index)
     name = esc(domain["name"])
     article_count = domain["article_count"]
-    top_n = len(domain["items"])
     summary = esc(domain["summary"])
     is_technology = bool(domain.get("is_technology"))
 
-    items_html = "\n".join(
-        render_item(item, i + 1, is_technology)
-        for i, item in enumerate(domain["items"])
-    )
+    sections = domain.get("source_sections")
+    if sections:
+        items_html, top_n = render_source_sections(sections, is_technology)
+    else:
+        top_n = len(domain["items"])
+        items_html = "\n".join(
+            render_item(item, i + 1, is_technology)
+            for i, item in enumerate(domain["items"])
+        )
 
     commentary_html = ""
     if domain.get("commentary"):
