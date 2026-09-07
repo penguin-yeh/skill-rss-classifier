@@ -179,6 +179,14 @@ def render_bonus_reading(bonus):
 </div>"""
 
 
+def render_source_heading(label, stamp):
+    return (
+        f'<div style="font-family:{FONT_MONO};font-size:12px;letter-spacing:1px;'
+        f'color:{stamp};text-transform:uppercase;margin:18px 0 4px;'
+        f'border-bottom:1px solid {HAIRLINE};padding-bottom:4px">{esc(label)}</div>'
+    )
+
+
 def render_domain(domain, index):
     stamp = stamp_color_for(index)
     name = esc(domain["name"])
@@ -187,10 +195,25 @@ def render_domain(domain, index):
     summary = esc(domain["summary"])
     is_technology = bool(domain.get("is_technology"))
 
-    items_html = "\n".join(
-        render_item(item, i + 1, is_technology)
-        for i, item in enumerate(domain["items"])
-    )
+    # Priority domains may set group_by_source + per-item source_label to get
+    # one subsection per contributing source instead of a flat Top N list
+    # (deeper treatment for a priority domain, per SKILL.md Step 2). Numbering
+    # stays sequential across the whole domain regardless of grouping.
+    if domain.get("group_by_source"):
+        parts = []
+        last_label = None
+        for i, item in enumerate(domain["items"]):
+            label = item.get("source_label")
+            if label and label != last_label:
+                parts.append(render_source_heading(label, stamp))
+                last_label = label
+            parts.append(render_item(item, i + 1, is_technology))
+        items_html = "\n".join(parts)
+    else:
+        items_html = "\n".join(
+            render_item(item, i + 1, is_technology)
+            for i, item in enumerate(domain["items"])
+        )
 
     commentary_html = ""
     if domain.get("commentary"):
@@ -323,6 +346,7 @@ PAYLOAD_SCHEMA_EXAMPLE = {
             "name": "科技與軟體工程",
             "article_count": 234,
             "is_technology": True,
+            "group_by_source": False,
             "summary": "今天的重點是……",
             "items": [
                 {
@@ -331,6 +355,7 @@ PAYLOAD_SCHEMA_EXAMPLE = {
                     "date": "2026-08-17",
                     "summary": "2-3 句具體摘要。",
                     "objective_metric": "依 Hacker News 熱度：74讚/28留言排序",
+                    "source_label": "Hacker News",  # only used when group_by_source is true
                     "tech_comparison": {
                         "before": "先前做法",
                         "new": "新在哪裡",
