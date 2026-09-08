@@ -179,18 +179,40 @@ def render_bonus_reading(bonus):
 </div>"""
 
 
+def render_source_heading(source_name):
+    """Subsection heading for a domain rendered as one block per
+    contributing source (used for the priority/extra-depth domain instead
+    of a single flat Top N list)."""
+    return f'  <div style="font-family:{FONT_MONO};font-size:11.5px;letter-spacing:0.5px;color:{SOFT_INK};text-transform:uppercase;margin:16px 0 2px;padding-top:10px;border-top:1px solid {HAIRLINE}">{esc(source_name)}</div>'
+
+
 def render_domain(domain, index):
     stamp = stamp_color_for(index)
     name = esc(domain["name"])
     article_count = domain["article_count"]
-    top_n = len(domain["items"])
     summary = esc(domain["summary"])
     is_technology = bool(domain.get("is_technology"))
 
-    items_html = "\n".join(
-        render_item(item, i + 1, is_technology)
-        for i, item in enumerate(domain["items"])
-    )
+    sections = domain.get("sections")
+    if sections:
+        # Grouped-by-source rendering: one subheading per contributing
+        # source, numbering continuing across the whole domain so "Top N"
+        # still refers to a single running count.
+        parts = []
+        running_index = 0
+        for sec in sections:
+            parts.append(render_source_heading(sec["source_name"]))
+            for item in sec["items"]:
+                running_index += 1
+                parts.append(render_item(item, running_index, is_technology))
+        items_html = "\n".join(parts)
+        top_n = running_index
+    else:
+        items_html = "\n".join(
+            render_item(item, i + 1, is_technology)
+            for i, item in enumerate(domain["items"])
+        )
+        top_n = len(domain["items"])
 
     commentary_html = ""
     if domain.get("commentary"):
