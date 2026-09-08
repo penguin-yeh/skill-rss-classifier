@@ -228,7 +228,7 @@ def render_domain(domain, index):
 
     return f"""<div style="padding:24px 30px;border-top:3px solid {stamp}">
   <table role="presentation" style="border-collapse:collapse;margin:0 0 10px"><tr>
-    <td style="background:{stamp};border-radius:3px;padding:4px 10px"><span style="font-family:{FONT_MONO};font-size:11px;color:#fff;letter-spacing:0.5px">{name}</span></td>
+    <td bgcolor="{stamp}" style="background:{stamp};border-radius:3px;padding:4px 10px"><span style="font-family:{FONT_MONO};font-size:11px;color:#fff;letter-spacing:0.5px">{name}</span></td>
     <td style="padding:0 0 0 10px;font-family:{FONT_MONO};font-size:12px;color:{SOFT_INK}">{article_count} 篇 → Top {top_n}</td>
   </tr></table>
   <div style="font-family:{FONT_SERIF};font-size:14.5px;line-height:1.9;color:{INK};margin:0 0 6px">{summary}</div>
@@ -251,7 +251,7 @@ def render_tally_chart(tally):
       <td style="width:130px;padding:5px 8px;font-size:12.5px;color:{INK};white-space:nowrap;font-family:{FONT_SANS}">{esc(r['name'])}</td>
       <td style="padding:5px 8px">
         <table role="presentation" width="100%" style="border-collapse:collapse"><tr>
-          <td style="width:{pct}%;background:{INK};height:11px;border-radius:2px;font-size:0;line-height:0">&nbsp;</td>
+          <td bgcolor="{INK}" style="width:{pct}%;background:{INK};height:11px;border-radius:2px;font-size:0;line-height:0">&nbsp;</td>
           <td style="width:{rest}%;font-size:0;line-height:0">&nbsp;</td>
         </tr></table>
       </td>
@@ -306,6 +306,8 @@ def render_email(data):
 # ---------------------------------------------------------------------------
 
 def _self_check(html_out):
+    import re
+
     assert "<style" not in html_out.lower(), (
         "A <style> block snuck into the output — Gmail strips these; "
         "everything must be inline style=."
@@ -313,8 +315,25 @@ def _self_check(html_out):
     assert f"background:{CARD_BG}" in html_out, "Card background token missing."
     assert f"border:1px solid {HAIRLINE}" in html_out, "Outer card border missing."
 
+    # Gmail's own send pipeline strips the CSS `background:` declaration from
+    # every inline style= (confirmed by inspecting a real sent message's raw
+    # MIME) while leaving everything else — border, color, padding — intact.
+    # For a <td> that's carrying a solid fill (the domain-name stamp badge,
+    # the tally bar-chart fill), losing the background silently turns white
+    # badge text invisible or an empty-looking bar chart. The legacy `bgcolor`
+    # HTML attribute survives that stripping, so every colored-fill <td> must
+    # carry both: `style="background:...` for clients that honor it, and
+    # `bgcolor="..."` as the Gmail-safe fallback. Assert the pairing here so
+    # a future edit that adds a new colored <td> without bgcolor fails loudly
+    # instead of shipping invisible text again.
+    for td in re.findall(r"<td\b[^>]*>", html_out):
+        if "background:" in td and "bgcolor=" not in td:
+            raise AssertionError(
+                f"<td> has a CSS background but no bgcolor= fallback "
+                f"(Gmail strips background: on send): {td!r}"
+            )
+
     # No style="" attribute may declare `color:` twice.
-    import re
     for m in re.finditer(r'style="([^"]*)"', html_out):
         style_val = m.group(1)
         if style_val.count("color:") - style_val.count("background-color:") > 1:
