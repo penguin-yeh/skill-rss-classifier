@@ -98,7 +98,7 @@ def render_masthead(data):
     title = esc(data.get("title") or MASTHEAD_TITLE)
     meta_lines = data.get("meta_lines") or []
     meta_html = "<br>\n    ".join(meta_lines)  # meta_lines may contain inline <strong> markup
-    return f"""<div style="padding:30px 30px 20px 30px;border-bottom:3px double {INK}">
+    return f"""<div style="padding:30px 30px 20px 30px;border-bottom:3px double {INK};background-color:{CARD_BG}">
   <div style="font-family:{FONT_MONO};font-size:11px;letter-spacing:2px;color:{SOFT_INK};text-transform:uppercase;margin-bottom:10px">{eyebrow}</div>
   <div style="font-family:{FONT_SERIF};font-size:30px;font-weight:700;color:{INK};line-height:1.2">{title}</div>
   <div style="font-family:{FONT_MONO};font-size:12px;color:{SOFT_INK};margin-top:12px;line-height:1.8">
@@ -110,7 +110,7 @@ def render_masthead(data):
 def render_excluded_box(text):
     if not text:
         return ""
-    return f"""<div style="border:1px solid {HAIRLINE};border-radius:6px;padding:12px 16px;margin:20px 30px 0 30px;font-family:{FONT_SANS};font-size:12px;color:{SOFT_INK};line-height:1.8">
+    return f"""<div style="border:1px solid {HAIRLINE};border-radius:6px;padding:12px 16px;margin:20px 30px 0 30px;font-family:{FONT_SANS};font-size:12px;color:{SOFT_INK};line-height:1.8;background-color:{CARD_BG}">
   <strong style="color:{INK}">已排除內容：</strong>{text}
 </div>"""
 
@@ -122,7 +122,7 @@ def render_failed_feeds(failed_feeds):
         f"・{esc(f['name'])}：{esc(f['reason'])}" for f in failed_feeds
     )
     n = len(failed_feeds)
-    return f"""<div style="border:1px solid {HAIRLINE};border-radius:6px;padding:12px 16px;margin:14px 30px 0 30px;font-family:{FONT_SANS};font-size:12px;color:{SOFT_INK};line-height:1.8">
+    return f"""<div style="border:1px solid {HAIRLINE};border-radius:6px;padding:12px 16px;margin:14px 30px 0 30px;font-family:{FONT_SANS};font-size:12px;color:{SOFT_INK};line-height:1.8;background-color:{CARD_BG}">
   ⚠️ <strong>本次共有 {n} 個來源抓取失敗</strong>，其文章數為 0 不代表「今天沒新聞」，而是抓取本身失敗：<br>
   {lines}
 </div>"""
@@ -148,7 +148,7 @@ def render_item(item, index, is_technology):
       <strong>解決了什麼：</strong>{esc(cmp['benefit'])}
     </div>"""
 
-    return f"""  <div style="padding:10px 0;border-top:1px solid {HAIRLINE}">
+    return f"""  <div style="padding:10px 0;border-top:1px solid {HAIRLINE};background-color:{CARD_BG}">
     <div style="font-family:{FONT_SANS};font-size:14px;line-height:1.6;margin:0 0 3px">
       <span style="font-family:{FONT_MONO};font-size:12.5px;color:{INK};margin-right:6px">{index}.</span>
       <a href="{link}" style="color:{INK};text-decoration:underline">{title}</a>
@@ -203,7 +203,7 @@ def render_domain(domain, index):
 
     bonus_html = render_bonus_reading(domain.get("bonus_reading"))
 
-    return f"""<div style="padding:24px 30px;border-top:3px solid {stamp}">
+    return f"""<div style="padding:24px 30px;border-top:3px solid {stamp};background-color:{CARD_BG}">
   <table role="presentation" style="border-collapse:collapse;margin:0 0 10px"><tr>
     <td style="background-color:{stamp};border-radius:3px;padding:4px 10px"><span style="font-family:{FONT_MONO};font-size:11px;color:#fff;letter-spacing:0.5px">{name}</span></td>
     <td style="padding:0 0 0 10px;font-family:{FONT_MONO};font-size:12px;color:{SOFT_INK}">{article_count} 篇 → Top {top_n}</td>
@@ -235,7 +235,7 @@ def render_tally_chart(tally):
       <td style="width:28px;padding:5px 8px;font-size:12.5px;color:{SOFT_INK};text-align:right;font-family:{FONT_SANS}">{r['count']}</td>
     </tr>""")
     rows_joined = "\n".join(row_html)
-    return f"""<div style="padding:24px 30px;border-top:1px solid {HAIRLINE}">
+    return f"""<div style="padding:24px 30px;border-top:1px solid {HAIRLINE};background-color:{CARD_BG}">
   <h2 style="font-family:{FONT_SERIF};font-size:19px;font-weight:700;color:{INK};margin:0 0 4px">來源統計</h2>
   <div style="font-family:{FONT_SANS};font-size:12px;color:{SOFT_INK};margin:0 0 4px">Top N + 小額外閱讀 合計（依來源分佈，非代表主要精選列表本身平均分佈）</div>
   <table role="presentation" width="100%" style="border-collapse:collapse;margin-top:10px">
@@ -247,7 +247,7 @@ def render_tally_chart(tally):
 def render_footer(footer_summary):
     if not footer_summary:
         return ""
-    return f"""<div style="padding:16px 30px;border-top:1px solid {HAIRLINE};font-family:{FONT_MONO};font-size:11px;color:{SOFT_INK};text-align:center">{esc(footer_summary)}</div>"""
+    return f"""<div style="padding:16px 30px;border-top:1px solid {HAIRLINE};font-family:{FONT_MONO};font-size:11px;color:{SOFT_INK};text-align:center;background-color:{CARD_BG}">{esc(footer_summary)}</div>"""
 
 
 def render_email(data):

@@ -430,6 +430,26 @@ survived (e.g. `grep -c "background-color:#" ` on the fetched `htmlBody`
 should roughly match the local file's count) rather than assuming the send
 was a faithful copy.
 
+**A second, related failure mode: a content block with no `background-color`
+of its own, relying only on inheriting one from an ancestor element, can
+render with the wrong (or no) background in dark-mode-aware clients** —
+caught in practice when the masthead title block, the excluded/failed-feed
+notice boxes, each numbered article row, each domain's outer wrapper, the
+tally-chart section, and the footer all lacked their own `background-color`
+(they only ever "borrowed" the outer card's `background-color:{CARD_BG}`
+via CSS inheritance). Gmail's dark-mode rendering forces its own dark
+background onto any block that doesn't explicitly declare one, so those
+specific regions rendered as blank/dark ("transparent") while the blocks
+that *did* declare their own background-color (stamp tags, 評語/新舊比較/
+小額外閱讀 tint boxes, the bar-chart fill) rendered fine — producing a
+patchy, inconsistent look rather than a uniformly broken one. The fix is
+structural, not cosmetic: every top-level content block in the template
+must declare its own `background-color:{CARD_BG}` rather than relying on
+inheritance, even though it renders identically in a light-mode/no-CSS-
+stripping context either way. If a new block type is ever added to
+`render_email.py`, give it an explicit `background-color:{CARD_BG}` (or
+whichever token is correct for that box) from the start.
+
 If the final report is delivered somewhere that renders markup (an HTML
 email, a webpage, an artifact) rather than as plain text, render each
 article's title as a clickable link to its real `link` — that's the whole
