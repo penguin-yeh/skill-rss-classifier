@@ -408,10 +408,27 @@ link/title/date integrity.
 **Also verify the source-tally chart actually rendered as a bar chart, not
 a table that silently reverted to numbers-only** — grep the final HTML for
 the bar-row pattern from the template above (a `<td>` with both a
-`background:` and a `width:...%` in the same `style=`) and confirm it
+`background-color:` and a `width:...%` in the same `style=`) and confirm it
 appears once per source row. If it's missing, the chart degraded back to a
 plain table somewhere in generation — a known failure mode — and must be
 rebuilt from the template, not patched around.
+
+**If delivery is via Gmail specifically, verify the sent message, not just
+the locally rendered file.** Gmail's inbound HTML sanitizer strips the
+`background:` shorthand property from inline `style=` attributes entirely
+(while leaving `background-color:`, `color:`, `border:`, etc. untouched) —
+this was caught in practice by fetching a just-sent message back via the
+Gmail MCP `get_message` tool and diffing its `htmlBody` against the local
+render, which showed every stamp color, tint box, and bar-chart fill gone
+(silently rendering as plain/white). `render_email.py` now emits
+`background-color:` everywhere for exactly this reason — never revert any
+of those declarations back to the `background:` shorthand, since that
+reintroduces this failure mode invisibly (the locally rendered file still
+looks correct; only the delivered Gmail copy is broken). After sending via
+Gmail, fetch the sent message back once and confirm `background-color:`
+survived (e.g. `grep -c "background-color:#" ` on the fetched `htmlBody`
+should roughly match the local file's count) rather than assuming the send
+was a faithful copy.
 
 If the final report is delivered somewhere that renders markup (an HTML
 email, a webpage, an artifact) rather than as plain text, render each
