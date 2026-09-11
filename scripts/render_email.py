@@ -72,6 +72,7 @@ STAMP_COLOR_ROTATION = [
     "#5b4a8a",  # 藏青紫
     "#5c6b3f",  # 赭綠
     "#8a6d1f",  # 赭黃
+    "#8a4a6d",  # 梅紫紅
 ]
 
 MASTHEAD_TITLE = "Penguin 每日報報"
@@ -97,7 +98,7 @@ def render_masthead(data):
     title = esc(data.get("title") or MASTHEAD_TITLE)
     meta_lines = data.get("meta_lines") or []
     meta_html = "<br>\n    ".join(meta_lines)  # meta_lines may contain inline <strong> markup
-    return f"""<div style="padding:30px 30px 20px 30px;border-bottom:3px double {INK}">
+    return f"""<div style="padding:30px 30px 20px 30px;border-bottom:3px double {INK};background-color:{CARD_BG}">
   <div style="font-family:{FONT_MONO};font-size:11px;letter-spacing:2px;color:{SOFT_INK};text-transform:uppercase;margin-bottom:10px">{eyebrow}</div>
   <div style="font-family:{FONT_SERIF};font-size:30px;font-weight:700;color:{INK};line-height:1.2">{title}</div>
   <div style="font-family:{FONT_MONO};font-size:12px;color:{SOFT_INK};margin-top:12px;line-height:1.8">
@@ -109,7 +110,7 @@ def render_masthead(data):
 def render_excluded_box(text):
     if not text:
         return ""
-    return f"""<div style="border:1px solid {HAIRLINE};border-radius:6px;padding:12px 16px;margin:20px 30px 0 30px;font-family:{FONT_SANS};font-size:12px;color:{SOFT_INK};line-height:1.8">
+    return f"""<div style="border:1px solid {HAIRLINE};border-radius:6px;padding:12px 16px;margin:20px 30px 0 30px;font-family:{FONT_SANS};font-size:12px;color:{SOFT_INK};line-height:1.8;background-color:{CARD_BG}">
   <strong style="color:{INK}">已排除內容：</strong>{text}
 </div>"""
 
@@ -121,7 +122,7 @@ def render_failed_feeds(failed_feeds):
         f"・{esc(f['name'])}：{esc(f['reason'])}" for f in failed_feeds
     )
     n = len(failed_feeds)
-    return f"""<div style="border:1px solid {HAIRLINE};border-radius:6px;padding:12px 16px;margin:14px 30px 0 30px;font-family:{FONT_SANS};font-size:12px;color:{SOFT_INK};line-height:1.8">
+    return f"""<div style="border:1px solid {HAIRLINE};border-radius:6px;padding:12px 16px;margin:14px 30px 0 30px;font-family:{FONT_SANS};font-size:12px;color:{SOFT_INK};line-height:1.8;background-color:{CARD_BG}">
   ⚠️ <strong>本次共有 {n} 個來源抓取失敗</strong>，其文章數為 0 不代表「今天沒新聞」，而是抓取本身失敗：<br>
   {lines}
 </div>"""
@@ -140,14 +141,14 @@ def render_item(item, index, is_technology):
     cmp = item.get("tech_comparison")
     if is_technology and cmp:
         comparison_html = f"""
-    <div style="background:{COMPARISON_BG};border-left:3px solid {COMPARISON_BORDER};border-radius:0 6px 6px 0;padding:10px 14px;margin:8px 0 4px;font-family:{FONT_SANS};font-size:12.5px;color:{BODY_TEXT};line-height:1.8">
+    <div style="background-color:{COMPARISON_BG};border-left:3px solid {COMPARISON_BORDER};border-radius:0 6px 6px 0;padding:10px 14px;margin:8px 0 4px;font-family:{FONT_SANS};font-size:12.5px;color:{BODY_TEXT};line-height:1.8">
       <strong style="color:{COMPARISON_LABEL}">新舊比較：</strong>
       <strong>先前：</strong>{esc(cmp['before'])}
       <strong>新在哪：</strong>{esc(cmp['new'])}
       <strong>解決了什麼：</strong>{esc(cmp['benefit'])}
     </div>"""
 
-    return f"""  <div style="padding:10px 0;border-top:1px solid {HAIRLINE}">
+    return f"""  <div style="padding:10px 0;border-top:1px solid {HAIRLINE};background-color:{CARD_BG}">
     <div style="font-family:{FONT_SANS};font-size:14px;line-height:1.6;margin:0 0 3px">
       <span style="font-family:{FONT_MONO};font-size:12.5px;color:{INK};margin-right:6px">{index}.</span>
       <a href="{link}" style="color:{INK};text-decoration:underline">{title}</a>
@@ -171,7 +172,7 @@ def render_bonus_reading(bonus):
             f' <span style="color:{SOFT_INK}">— {note}</span>'
         )
     rows_html = "<br>\n".join(rows)
-    return f"""<div style="background:{BONUS_BG};border:1px dashed {BONUS_BORDER};border-radius:8px;padding:12px 16px;margin:14px 0 0">
+    return f"""<div style="background-color:{BONUS_BG};border:1px dashed {BONUS_BORDER};border-radius:8px;padding:12px 16px;margin:14px 0 0">
   <div style="font-family:{FONT_SANS};font-size:12.5px;color:{SOFT_INK};margin:0 0 8px">🗞️ <strong style="color:{INK}">小額外閱讀：</strong>{intro}</div>
   <div style="font-family:{FONT_SANS};font-size:12.5px;color:{INK};line-height:1.9">
 {rows_html}
@@ -195,16 +196,16 @@ def render_domain(domain, index):
     commentary_html = ""
     if domain.get("commentary"):
         commentary_html = f"""
-<div style="background:{TINT_BOX_BG};border-radius:10px;padding:16px 18px;margin:20px 0 18px">
+<div style="background-color:{TINT_BOX_BG};border-radius:10px;padding:16px 18px;margin:20px 0 18px">
   <strong style="color:{TINT_BOX_LABEL}">評語：</strong>
   <span style="color:{BODY_TEXT};font-size:13.5px;line-height:1.9;font-family:{FONT_SANS}">{esc(domain['commentary'])}</span>
 </div>"""
 
     bonus_html = render_bonus_reading(domain.get("bonus_reading"))
 
-    return f"""<div style="padding:24px 30px;border-top:3px solid {stamp}">
+    return f"""<div style="padding:24px 30px;border-top:3px solid {stamp};background-color:{CARD_BG}">
   <table role="presentation" style="border-collapse:collapse;margin:0 0 10px"><tr>
-    <td style="background:{stamp};border-radius:3px;padding:4px 10px"><span style="font-family:{FONT_MONO};font-size:11px;color:#fff;letter-spacing:0.5px">{name}</span></td>
+    <td style="background-color:{stamp};border-radius:3px;padding:4px 10px"><span style="font-family:{FONT_MONO};font-size:11px;color:#fff;letter-spacing:0.5px">{name}</span></td>
     <td style="padding:0 0 0 10px;font-family:{FONT_MONO};font-size:12px;color:{SOFT_INK}">{article_count} 篇 → Top {top_n}</td>
   </tr></table>
   <div style="font-family:{FONT_SERIF};font-size:14.5px;line-height:1.9;color:{INK};margin:0 0 6px">{summary}</div>
@@ -227,14 +228,14 @@ def render_tally_chart(tally):
       <td style="width:130px;padding:5px 8px;font-size:12.5px;color:{INK};white-space:nowrap;font-family:{FONT_SANS}">{esc(r['name'])}</td>
       <td style="padding:5px 8px">
         <table role="presentation" width="100%" style="border-collapse:collapse"><tr>
-          <td style="width:{pct}%;background:{INK};height:11px;border-radius:2px;font-size:0;line-height:0">&nbsp;</td>
+          <td style="width:{pct}%;background-color:{INK};height:11px;border-radius:2px;font-size:0;line-height:0">&nbsp;</td>
           <td style="width:{rest}%;font-size:0;line-height:0">&nbsp;</td>
         </tr></table>
       </td>
       <td style="width:28px;padding:5px 8px;font-size:12.5px;color:{SOFT_INK};text-align:right;font-family:{FONT_SANS}">{r['count']}</td>
     </tr>""")
     rows_joined = "\n".join(row_html)
-    return f"""<div style="padding:24px 30px;border-top:1px solid {HAIRLINE}">
+    return f"""<div style="padding:24px 30px;border-top:1px solid {HAIRLINE};background-color:{CARD_BG}">
   <h2 style="font-family:{FONT_SERIF};font-size:19px;font-weight:700;color:{INK};margin:0 0 4px">來源統計</h2>
   <div style="font-family:{FONT_SANS};font-size:12px;color:{SOFT_INK};margin:0 0 4px">Top N + 小額外閱讀 合計（依來源分佈，非代表主要精選列表本身平均分佈）</div>
   <table role="presentation" width="100%" style="border-collapse:collapse;margin-top:10px">
@@ -246,7 +247,7 @@ def render_tally_chart(tally):
 def render_footer(footer_summary):
     if not footer_summary:
         return ""
-    return f"""<div style="padding:16px 30px;border-top:1px solid {HAIRLINE};font-family:{FONT_MONO};font-size:11px;color:{SOFT_INK};text-align:center">{esc(footer_summary)}</div>"""
+    return f"""<div style="padding:16px 30px;border-top:1px solid {HAIRLINE};font-family:{FONT_MONO};font-size:11px;color:{SOFT_INK};text-align:center;background-color:{CARD_BG}">{esc(footer_summary)}</div>"""
 
 
 def render_email(data):
@@ -263,8 +264,8 @@ def render_email(data):
         part for part in [masthead, excluded, failed, domains_html, tally, footer] if part
     )
 
-    html_out = f"""<div style="padding:32px 12px;font-family:{FONT_SANS};background:{PAPER_BG}">
-<div style="max-width:680px;margin:0 auto;background:{CARD_BG};border:1px solid {HAIRLINE}">
+    html_out = f"""<div style="padding:32px 12px;font-family:{FONT_SANS};background-color:{PAPER_BG}">
+<div style="max-width:680px;margin:0 auto;background-color:{CARD_BG};border:1px solid {HAIRLINE}">
 {body}
 </div>
 </div>"""
@@ -286,7 +287,7 @@ def _self_check(html_out):
         "A <style> block snuck into the output — Gmail strips these; "
         "everything must be inline style=."
     )
-    assert f"background:{CARD_BG}" in html_out, "Card background token missing."
+    assert f"background-color:{CARD_BG}" in html_out, "Card background token missing."
     assert f"border:1px solid {HAIRLINE}" in html_out, "Outer card border missing."
 
     # No style="" attribute may declare `color:` twice.
@@ -304,7 +305,7 @@ def _self_check(html_out):
             raise AssertionError(f"Duplicate color: in one style attribute: {style_val!r}")
 
     # Every bar-chart bar cell must carry both a background and a width.
-    for m in re.finditer(r'<td style="width:(\d+)%;background:', html_out):
+    for m in re.finditer(r'<td style="width:(\d+)%;background-color:', html_out):
         pass  # presence of this pattern at least once per row is checked by construction
 
 

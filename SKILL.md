@@ -408,10 +408,47 @@ link/title/date integrity.
 **Also verify the source-tally chart actually rendered as a bar chart, not
 a table that silently reverted to numbers-only** — grep the final HTML for
 the bar-row pattern from the template above (a `<td>` with both a
-`background:` and a `width:...%` in the same `style=`) and confirm it
+`background-color:` and a `width:...%` in the same `style=`) and confirm it
 appears once per source row. If it's missing, the chart degraded back to a
 plain table somewhere in generation — a known failure mode — and must be
 rebuilt from the template, not patched around.
+
+**If delivery is via Gmail specifically, verify the sent message, not just
+the locally rendered file.** Gmail's inbound HTML sanitizer strips the
+`background:` shorthand property from inline `style=` attributes entirely
+(while leaving `background-color:`, `color:`, `border:`, etc. untouched) —
+this was caught in practice by fetching a just-sent message back via the
+Gmail MCP `get_message` tool and diffing its `htmlBody` against the local
+render, which showed every stamp color, tint box, and bar-chart fill gone
+(silently rendering as plain/white). `render_email.py` now emits
+`background-color:` everywhere for exactly this reason — never revert any
+of those declarations back to the `background:` shorthand, since that
+reintroduces this failure mode invisibly (the locally rendered file still
+looks correct; only the delivered Gmail copy is broken). After sending via
+Gmail, fetch the sent message back once and confirm `background-color:`
+survived (e.g. `grep -c "background-color:#" ` on the fetched `htmlBody`
+should roughly match the local file's count) rather than assuming the send
+was a faithful copy.
+
+**A second, related failure mode: a content block with no `background-color`
+of its own, relying only on inheriting one from an ancestor element, can
+render with the wrong (or no) background in dark-mode-aware clients** —
+caught in practice when the masthead title block, the excluded/failed-feed
+notice boxes, each numbered article row, each domain's outer wrapper, the
+tally-chart section, and the footer all lacked their own `background-color`
+(they only ever "borrowed" the outer card's `background-color:{CARD_BG}`
+via CSS inheritance). Gmail's dark-mode rendering forces its own dark
+background onto any block that doesn't explicitly declare one, so those
+specific regions rendered as blank/dark ("transparent") while the blocks
+that *did* declare their own background-color (stamp tags, 評語/新舊比較/
+小額外閱讀 tint boxes, the bar-chart fill) rendered fine — producing a
+patchy, inconsistent look rather than a uniformly broken one. The fix is
+structural, not cosmetic: every top-level content block in the template
+must declare its own `background-color:{CARD_BG}` rather than relying on
+inheritance, even though it renders identically in a light-mode/no-CSS-
+stripping context either way. If a new block type is ever added to
+`render_email.py`, give it an explicit `background-color:{CARD_BG}` (or
+whichever token is correct for that box) from the start.
 
 If the final report is delivered somewhere that renders markup (an HTML
 email, a webpage, an artifact) rather than as plain text, render each
