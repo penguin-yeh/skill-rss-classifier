@@ -179,18 +179,39 @@ def render_bonus_reading(bonus):
 </div>"""
 
 
+def render_source_subheading(source_name, stamp):
+    return f"""  <div style="font-family:{FONT_MONO};font-size:11px;letter-spacing:1px;color:{stamp};text-transform:uppercase;margin:16px 0 2px;padding-top:8px">{esc(source_name)}</div>"""
+
+
 def render_domain(domain, index):
     stamp = stamp_color_for(index)
     name = esc(domain["name"])
     article_count = domain["article_count"]
-    top_n = len(domain["items"])
     summary = esc(domain["summary"])
     is_technology = bool(domain.get("is_technology"))
 
-    items_html = "\n".join(
-        render_item(item, i + 1, is_technology)
-        for i, item in enumerate(domain["items"])
-    )
+    # A domain either has a flat `items` list (numbered 1..N straight through),
+    # or a `source_sections` list ([{source, items}, ...]) for the priority
+    # domain's "one subsection per contributing source" layout — numbering
+    # still runs continuously 1..N across the whole domain so "Top N" stays
+    # meaningful, but each source's items are grouped under its own subheading.
+    source_sections = domain.get("source_sections")
+    if source_sections:
+        top_n = sum(len(s["items"]) for s in source_sections)
+        parts = []
+        counter = 0
+        for section in source_sections:
+            parts.append(render_source_subheading(section["source"], stamp))
+            for item in section["items"]:
+                counter += 1
+                parts.append(render_item(item, counter, is_technology))
+        items_html = "\n".join(parts)
+    else:
+        top_n = len(domain["items"])
+        items_html = "\n".join(
+            render_item(item, i + 1, is_technology)
+            for i, item in enumerate(domain["items"])
+        )
 
     commentary_html = ""
     if domain.get("commentary"):
@@ -308,6 +329,12 @@ def _self_check(html_out):
         pass  # presence of this pattern at least once per row is checked by construction
 
 
+# A domain normally uses a flat "items" list (see below). A domain may
+# instead provide "source_sections": [{"source": "來源名稱", "items": [...]}]
+# to render one subsection per contributing source (used for a priority
+# domain per SKILL.md's "hold its subagent to a higher bar" instruction) —
+# each item has the same shape as a flat-list item, and numbering still runs
+# continuously 1..N across the whole domain. Provide one of the two, not both.
 PAYLOAD_SCHEMA_EXAMPLE = {
     "title": "Penguin 每日報報",
     "eyebrow": "RSS FEED 主題分類與摘要",
