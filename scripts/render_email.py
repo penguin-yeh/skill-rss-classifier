@@ -180,6 +180,16 @@ def render_bonus_reading(bonus):
 </div>"""
 
 
+def render_source_subheading(source_label):
+    """A small subsection header inside a domain's Top N, used when
+    `group_by_source` groups the flat ranked list by contributing source
+    instead of showing it as one undifferentiated list (see SKILL.md's
+    priority-domain requirement). Purely a visual grouping — the Top N
+    numbering stays continuous across the whole domain, so this never
+    implies a separate per-source ranking."""
+    return f"""  <div style="font-family:{FONT_MONO};font-size:11px;letter-spacing:1px;color:{SOFT_INK};text-transform:uppercase;margin:14px 0 2px;background-color:{CARD_BG}">{esc(source_label)}</div>"""
+
+
 def render_domain(domain, index):
     stamp = stamp_color_for(index)
     name = esc(domain["name"])
@@ -187,11 +197,18 @@ def render_domain(domain, index):
     top_n = len(domain["items"])
     summary = esc(domain["summary"])
     is_technology = bool(domain.get("is_technology"))
+    group_by_source = bool(domain.get("group_by_source"))
 
-    items_html = "\n".join(
-        render_item(item, i + 1, is_technology)
-        for i, item in enumerate(domain["items"])
-    )
+    item_parts = []
+    prev_source = None
+    for i, item in enumerate(domain["items"]):
+        if group_by_source:
+            src = item.get("source_label")
+            if src and src != prev_source:
+                item_parts.append(render_source_subheading(src))
+                prev_source = src
+        item_parts.append(render_item(item, i + 1, is_technology))
+    items_html = "\n".join(item_parts)
 
     commentary_html = ""
     if domain.get("commentary"):
