@@ -180,18 +180,45 @@ def render_bonus_reading(bonus):
 </div>"""
 
 
+def render_source_group_heading(source_name, stamp, first):
+    margin_top = "4px" if first else "22px"
+    return (
+        f'<div style="padding:6px 0 2px;margin-top:{margin_top};background-color:{CARD_BG}">'
+        f'<span style="font-family:{FONT_MONO};font-size:11.5px;color:{stamp};'
+        f'letter-spacing:1px;font-weight:700;text-transform:uppercase">{esc(source_name)}</span>'
+        f'</div>'
+    )
+
+
 def render_domain(domain, index):
     stamp = stamp_color_for(index)
     name = esc(domain["name"])
     article_count = domain["article_count"]
-    top_n = len(domain["items"])
     summary = esc(domain["summary"])
     is_technology = bool(domain.get("is_technology"))
 
-    items_html = "\n".join(
-        render_item(item, i + 1, is_technology)
-        for i, item in enumerate(domain["items"])
-    )
+    source_groups = domain.get("source_groups")
+    if source_groups:
+        # Per-source subsections instead of a flat Top N list — used for the
+        # priority domain, where the report groups each contributing source
+        # under its own heading rather than listing every pick flat.
+        # Numbering stays continuous across groups (1..N over the whole
+        # domain), only the visual grouping changes.
+        parts = []
+        counter = 0
+        for gi, group in enumerate(source_groups):
+            parts.append(render_source_group_heading(group["source"], stamp, gi == 0))
+            for item in group["items"]:
+                counter += 1
+                parts.append(render_item(item, counter, is_technology))
+        items_html = "\n".join(parts)
+        top_n = counter
+    else:
+        items_html = "\n".join(
+            render_item(item, i + 1, is_technology)
+            for i, item in enumerate(domain["items"])
+        )
+        top_n = len(domain["items"])
 
     commentary_html = ""
     if domain.get("commentary"):
@@ -339,6 +366,16 @@ PAYLOAD_SCHEMA_EXAMPLE = {
                     },
                 }
             ],
+            # OPTIONAL alternative to "items": use "source_groups" instead when a
+            # domain should be rendered as one subsection per contributing source
+            # (e.g. a priority domain) rather than one flat numbered list. When
+            # present, this takes priority over "items" and numbering runs
+            # continuously across all groups. Each group's "items" use the same
+            # per-item shape as above.
+            # "source_groups": [
+            #     {"source": "Hacker News", "items": [ ... ]},
+            #     {"source": "Julia Evans", "items": [ ... ]},
+            # ],
             "commentary": "今天新聞內容本身的觀察。",
             "bonus_reading": {
                 "intro": "以下文章未進入 Top N，但為呈現來源完整報導樣貌一併收錄。",
