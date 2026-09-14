@@ -180,6 +180,10 @@ def render_bonus_reading(bonus):
 </div>"""
 
 
+def render_section_header(section_name, stamp):
+    return f"""  <div style="font-family:{FONT_MONO};font-size:11.5px;letter-spacing:0.5px;color:{stamp};text-transform:uppercase;margin:16px 0 2px;padding-top:10px;border-top:1px solid {HAIRLINE}">▍{esc(section_name)}</div>"""
+
+
 def render_domain(domain, index):
     stamp = stamp_color_for(index)
     name = esc(domain["name"])
@@ -188,10 +192,20 @@ def render_domain(domain, index):
     summary = esc(domain["summary"])
     is_technology = bool(domain.get("is_technology"))
 
-    items_html = "\n".join(
-        render_item(item, i + 1, is_technology)
-        for i, item in enumerate(domain["items"])
-    )
+    # Optional per-source subsections: when consecutive items carry a
+    # "section" key (a contributing source's name), emit a small labeled
+    # header before the first item of each new section instead of a flat
+    # list. Items without "section" render exactly as before (backward
+    # compatible with every non-priority domain, which never sets this).
+    item_parts = []
+    last_section = object()  # sentinel that won't equal any real value
+    for i, item in enumerate(domain["items"]):
+        section = item.get("section")
+        if section and section != last_section:
+            item_parts.append(render_section_header(section, stamp))
+        last_section = section if section else last_section
+        item_parts.append(render_item(item, i + 1, is_technology))
+    items_html = "\n".join(item_parts)
 
     commentary_html = ""
     if domain.get("commentary"):
