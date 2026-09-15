@@ -128,6 +128,18 @@ def render_failed_feeds(failed_feeds):
 </div>"""
 
 
+def render_source_heading(source_name, stamp):
+    """Optional subsection heading rendered before the first item of a new
+    `source_header` group within a domain's items list — used when a domain
+    (typically a priority domain spanning many contributing sources) wants
+    one subsection per source instead of one flat numbered list. Every
+    top-level block gets its own explicit background-color (see SKILL.md's
+    dark-mode inheritance note) rather than relying on the ancestor card."""
+    return f"""  <div style="background-color:{CARD_BG};padding:14px 0 2px;margin:6px 0 0">
+    <span style="font-family:{FONT_MONO};font-size:11px;color:{stamp};letter-spacing:0.5px;text-transform:uppercase;border-bottom:1px solid {stamp};padding-bottom:3px">{esc(source_name)}</span>
+  </div>"""
+
+
 def render_item(item, index, is_technology):
     title = esc(item["title"])
     link = html.escape(item["link"], quote=True)
@@ -188,10 +200,15 @@ def render_domain(domain, index):
     summary = esc(domain["summary"])
     is_technology = bool(domain.get("is_technology"))
 
-    items_html = "\n".join(
-        render_item(item, i + 1, is_technology)
-        for i, item in enumerate(domain["items"])
-    )
+    items_parts = []
+    last_source_header = None
+    for i, item in enumerate(domain["items"]):
+        header = item.get("source_header")
+        if header and header != last_source_header:
+            items_parts.append(render_source_heading(header, stamp))
+            last_source_header = header
+        items_parts.append(render_item(item, i + 1, is_technology))
+    items_html = "\n".join(items_parts)
 
     commentary_html = ""
     if domain.get("commentary"):
@@ -337,6 +354,7 @@ PAYLOAD_SCHEMA_EXAMPLE = {
                         "new": "新在哪裡",
                         "benefit": "解決了什麼問題",
                     },
+                    "source_header": "Hacker News（可選：僅用於需要「每個來源一個子節」的優先領域——同一 source_header 只在第一次出現時渲染子標題，其餘沿用）",
                 }
             ],
             "commentary": "今天新聞內容本身的觀察。",
