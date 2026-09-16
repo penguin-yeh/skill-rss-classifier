@@ -180,6 +180,20 @@ def render_bonus_reading(bonus):
 </div>"""
 
 
+def render_source_subheading(label, stamp):
+    """Optional per-source grouping inside a domain's Top N (item['source_label']).
+
+    Used for a priority domain that should read as one subsection per
+    contributing source rather than a flat numbered list. Omitted entirely
+    when items don't carry `source_label` — flat list stays the default.
+    """
+    return (
+        f'<div style="background-color:{CARD_BG};padding:12px 0 2px;margin:0;'
+        f'font-family:{FONT_MONO};font-size:11px;font-weight:700;color:{stamp};'
+        f'letter-spacing:1px;text-transform:uppercase">{esc(label)}</div>'
+    )
+
+
 def render_domain(domain, index):
     stamp = stamp_color_for(index)
     name = esc(domain["name"])
@@ -188,10 +202,15 @@ def render_domain(domain, index):
     summary = esc(domain["summary"])
     is_technology = bool(domain.get("is_technology"))
 
-    items_html = "\n".join(
-        render_item(item, i + 1, is_technology)
-        for i, item in enumerate(domain["items"])
-    )
+    items_html_parts = []
+    last_label = None
+    for i, item in enumerate(domain["items"]):
+        label = item.get("source_label")
+        if label and label != last_label:
+            items_html_parts.append(render_source_subheading(label, stamp))
+            last_label = label
+        items_html_parts.append(render_item(item, i + 1, is_technology))
+    items_html = "\n".join(items_html_parts)
 
     commentary_html = ""
     if domain.get("commentary"):
