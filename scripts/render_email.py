@@ -180,6 +180,15 @@ def render_bonus_reading(bonus):
 </div>"""
 
 
+def render_source_subheading(name):
+    """A per-source subsection heading inside a domain's Top N list — used
+    when a domain's items carry a `source_group` field (e.g. the priority
+    domain, which groups its Top N by contributing source rather than a
+    flat list). Declares its own background-color per the dark-mode
+    inheritance rule (see module docstring / SKILL.md notes)."""
+    return f"""  <div style="font-family:{FONT_MONO};font-size:11px;letter-spacing:1.5px;color:{SOFT_INK};text-transform:uppercase;margin:16px 0 2px;padding-top:10px;border-top:1px dashed {HAIRLINE};background-color:{CARD_BG}">▸ {esc(name)}</div>"""
+
+
 def render_domain(domain, index):
     stamp = stamp_color_for(index)
     name = esc(domain["name"])
@@ -188,10 +197,17 @@ def render_domain(domain, index):
     summary = esc(domain["summary"])
     is_technology = bool(domain.get("is_technology"))
 
-    items_html = "\n".join(
-        render_item(item, i + 1, is_technology)
-        for i, item in enumerate(domain["items"])
-    )
+    grouped = any(item.get("source_group") for item in domain["items"])
+    items_html_parts = []
+    last_group = None
+    for i, item in enumerate(domain["items"]):
+        if grouped:
+            g = item.get("source_group") or ""
+            if g != last_group:
+                items_html_parts.append(render_source_subheading(g))
+                last_group = g
+        items_html_parts.append(render_item(item, i + 1, is_technology))
+    items_html = "\n".join(items_html_parts)
 
     commentary_html = ""
     if domain.get("commentary"):
@@ -337,6 +353,7 @@ PAYLOAD_SCHEMA_EXAMPLE = {
                         "new": "新在哪裡",
                         "benefit": "解決了什麼問題",
                     },
+                    "source_group": "Hacker News",
                 }
             ],
             "commentary": "今天新聞內容本身的觀察。",
