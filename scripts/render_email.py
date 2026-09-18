@@ -180,6 +180,10 @@ def render_bonus_reading(bonus):
 </div>"""
 
 
+def render_source_heading(source_name):
+    return f"""  <div style="background-color:{CARD_BG};font-family:{FONT_MONO};font-size:11px;letter-spacing:1px;color:{SOFT_INK};text-transform:uppercase;margin:16px 0 2px;padding-top:10px;border-top:1px solid {HAIRLINE}">◆ {esc(source_name)}</div>"""
+
+
 def render_domain(domain, index):
     stamp = stamp_color_for(index)
     name = esc(domain["name"])
@@ -188,10 +192,22 @@ def render_domain(domain, index):
     summary = esc(domain["summary"])
     is_technology = bool(domain.get("is_technology"))
 
-    items_html = "\n".join(
-        render_item(item, i + 1, is_technology)
-        for i, item in enumerate(domain["items"])
-    )
+    # Optional per-source subsections: when items carry a "source" field and
+    # the domain opts in via group_by_source, insert a subsection heading
+    # whenever the source changes from the previous item (no reordering —
+    # the caller is expected to have already grouped same-source items
+    # contiguously). Falls back to the plain flat list when unset, so this
+    # is a no-op for every domain that doesn't use it.
+    group_by_source = bool(domain.get("group_by_source"))
+    parts = []
+    last_source = None
+    for i, item in enumerate(domain["items"]):
+        src = item.get("source") if group_by_source else None
+        if group_by_source and src and src != last_source:
+            parts.append(render_source_heading(src))
+            last_source = src
+        parts.append(render_item(item, i + 1, is_technology))
+    items_html = "\n".join(parts)
 
     commentary_html = ""
     if domain.get("commentary"):
