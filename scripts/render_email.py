@@ -180,6 +180,10 @@ def render_bonus_reading(bonus):
 </div>"""
 
 
+def render_source_subsection_header(source_name, stamp):
+    return f"""  <div style="font-family:{FONT_MONO};font-size:11px;letter-spacing:1px;color:{stamp};text-transform:uppercase;margin:18px 0 2px;padding-top:10px;border-top:1px solid {HAIRLINE}">{esc(source_name)}</div>"""
+
+
 def render_domain(domain, index):
     stamp = stamp_color_for(index)
     name = esc(domain["name"])
@@ -188,10 +192,20 @@ def render_domain(domain, index):
     summary = esc(domain["summary"])
     is_technology = bool(domain.get("is_technology"))
 
-    items_html = "\n".join(
-        render_item(item, i + 1, is_technology)
-        for i, item in enumerate(domain["items"])
-    )
+    # Optional per-source subsections: when items carry a `source_group`
+    # field (used for the priority domain, which must be organized as one
+    # subsection per contributing source rather than a flat list), emit a
+    # subsection header whenever the group changes. Domains that don't set
+    # `source_group` on any item render exactly as before (flat list).
+    parts = []
+    last_group = object()  # sentinel that never equals a real group value
+    for i, item in enumerate(domain["items"]):
+        group = item.get("source_group")
+        if group and group != last_group:
+            parts.append(render_source_subsection_header(group, stamp))
+            last_group = group
+        parts.append(render_item(item, i + 1, is_technology))
+    items_html = "\n".join(parts)
 
     commentary_html = ""
     if domain.get("commentary"):
