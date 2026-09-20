@@ -8,6 +8,7 @@
   <outline type="rss" xmlUrl="http://www.nytimes.com/services/xml/rss/nyt/HomePage.xml" text="NYT > Top Stories" title="NYT > Top Stories"></outline>
   <outline type="rss" xmlUrl="https://gnn.gamer.com.tw/rss.xml" text="巴哈姆特" title="巴哈姆特"></outline>
   <outline type="rss" xmlUrl="http://jvns.ca/atom.xml" text="Julia Evans" title="Julia Evans"></outline>
+  <outline type="rss" xmlUrl="https://blog.pragmaticengineer.com/rss/" text="The Pragmatic Engineer" title="The Pragmatic Engineer"></outline>
   <outline type="rss" xmlUrl="https://news.gamme.com.tw/feed" text="宅宅新聞" title="宅宅新聞"></outline>
   <outline type="rss" xmlUrl="http://githubengineering.com/atom.xml" text="The latest from GitHub's engineering team - The GitHub Blog" title="The latest from GitHub's engineering team - The GitHub Blog"></outline>
   <outline type="rss" xmlUrl="https://news.google.com/rss/search?q=GQ+Taiwan&amp;hl=zh-TW&amp;gl=TW&amp;ceid=TW:zh-Hant" text="GQ" title="GQ"></outline>
