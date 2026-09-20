@@ -180,18 +180,40 @@ def render_bonus_reading(bonus):
 </div>"""
 
 
+def render_source_section_header(source_name):
+    """Subheading for one contributing source inside a domain that opts into
+    per-source grouping via `sections` instead of a flat `items` list (see
+    render_domain). Only used when a domain asks for this extra structure —
+    a priority domain held to a higher bar than a flat numbered list."""
+    return f"""  <div style="font-family:{FONT_MONO};font-size:11.5px;letter-spacing:1px;color:{SOFT_INK};text-transform:uppercase;margin:16px 0 2px;padding-bottom:3px;border-bottom:1px solid {HAIRLINE}">{esc(source_name)}</div>"""
+
+
 def render_domain(domain, index):
     stamp = stamp_color_for(index)
     name = esc(domain["name"])
     article_count = domain["article_count"]
-    top_n = len(domain["items"])
     summary = esc(domain["summary"])
     is_technology = bool(domain.get("is_technology"))
 
-    items_html = "\n".join(
-        render_item(item, i + 1, is_technology)
-        for i, item in enumerate(domain["items"])
-    )
+    sections = domain.get("sections")
+    if sections:
+        # Per-source grouped layout: one subheading per contributing source,
+        # numbering continues across sections so the Top N reads as one list.
+        top_n = sum(len(s["items"]) for s in sections)
+        parts = []
+        counter = 0
+        for s in sections:
+            parts.append(render_source_section_header(s["source_name"]))
+            for item in s["items"]:
+                counter += 1
+                parts.append(render_item(item, counter, is_technology))
+        items_html = "\n".join(parts)
+    else:
+        top_n = len(domain["items"])
+        items_html = "\n".join(
+            render_item(item, i + 1, is_technology)
+            for i, item in enumerate(domain["items"])
+        )
 
     commentary_html = ""
     if domain.get("commentary"):
