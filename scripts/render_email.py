@@ -167,8 +167,12 @@ def render_bonus_reading(bonus):
         title = esc(it["title"])
         link = html.escape(it["link"], quote=True)
         note = esc(it.get("note") or "")
+        date_span = ""
+        if it.get("date"):
+            date_span = f' <span style="font-family:{FONT_MONO};color:{SOFT_INK}">[{esc(it["date"])}]</span>'
         rows.append(
             f'  ・<a href="{link}" style="color:{INK};text-decoration:underline">{title}</a>'
+            f'{date_span}'
             f' <span style="color:{SOFT_INK}">— {note}</span>'
         )
     rows_html = "<br>\n".join(rows)
@@ -180,12 +184,16 @@ def render_bonus_reading(bonus):
 </div>"""
 
 
-def render_source_section_header(source_name):
+def render_source_section_header(source_name, intro=None):
     """Subheading for one contributing source inside a domain that opts into
     per-source grouping via `sections` instead of a flat `items` list (see
     render_domain). Only used when a domain asks for this extra structure —
     a priority domain held to a higher bar than a flat numbered list."""
-    return f"""  <div style="font-family:{FONT_MONO};font-size:11.5px;letter-spacing:1px;color:{SOFT_INK};text-transform:uppercase;margin:16px 0 2px;padding-bottom:3px;border-bottom:1px solid {HAIRLINE}">{esc(source_name)}</div>"""
+    intro_html = ""
+    if intro:
+        intro_html = f"""
+  <div style="font-family:{FONT_SANS};font-size:12.5px;color:{SOFT_INK};line-height:1.7;margin:4px 0 6px">{esc(intro)}</div>"""
+    return f"""  <div style="font-family:{FONT_MONO};font-size:11.5px;letter-spacing:1px;color:{SOFT_INK};text-transform:uppercase;margin:16px 0 2px;padding-bottom:3px;border-bottom:1px solid {HAIRLINE}">{esc(source_name)}</div>{intro_html}"""
 
 
 def render_domain(domain, index):
@@ -203,7 +211,7 @@ def render_domain(domain, index):
         parts = []
         counter = 0
         for s in sections:
-            parts.append(render_source_section_header(s["source_name"]))
+            parts.append(render_source_section_header(s["source_name"], s.get("intro")))
             for item in s["items"]:
                 counter += 1
                 parts.append(render_item(item, counter, is_technology))
@@ -365,7 +373,7 @@ PAYLOAD_SCHEMA_EXAMPLE = {
             "bonus_reading": {
                 "intro": "以下文章未進入 Top N，但為呈現來源完整報導樣貌一併收錄。",
                 "items": [
-                    {"title": "次要文章", "link": "https://example.com/b", "note": "湊足保底"}
+                    {"title": "次要文章", "link": "https://example.com/b", "date": "2026-08-17", "note": "湊足保底"}
                 ],
             },
         }
