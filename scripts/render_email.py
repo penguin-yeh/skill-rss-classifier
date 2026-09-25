@@ -140,12 +140,21 @@ def render_item(item, index, is_technology):
     comparison_html = ""
     cmp = item.get("tech_comparison")
     if is_technology and cmp:
+        if isinstance(cmp, dict):
+            comparison_body = (
+                f"<strong>先前：</strong>{esc(cmp['before'])}"
+                f"<strong>新在哪：</strong>{esc(cmp['new'])}"
+                f"<strong>解決了什麼：</strong>{esc(cmp['benefit'])}"
+            )
+        else:
+            # Free-text form: a subagent's prose comparison that doesn't cleanly
+            # split into before/new/benefit fields (e.g. the source article
+            # didn't give enough detail for a fielded breakdown).
+            comparison_body = esc(cmp)
         comparison_html = f"""
     <div style="background-color:{COMPARISON_BG};border-left:3px solid {COMPARISON_BORDER};border-radius:0 6px 6px 0;padding:10px 14px;margin:8px 0 4px;font-family:{FONT_SANS};font-size:12.5px;color:{BODY_TEXT};line-height:1.8">
       <strong style="color:{COMPARISON_LABEL}">新舊比較：</strong>
-      <strong>先前：</strong>{esc(cmp['before'])}
-      <strong>新在哪：</strong>{esc(cmp['new'])}
-      <strong>解決了什麼：</strong>{esc(cmp['benefit'])}
+      {comparison_body}
     </div>"""
 
     return f"""  <div style="padding:10px 0;border-top:1px solid {HAIRLINE};background-color:{CARD_BG}">
