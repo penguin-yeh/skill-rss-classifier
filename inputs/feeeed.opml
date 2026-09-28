@@ -37,6 +37,6 @@
   <outline type="rss" xmlUrl="https://aws.amazon.com/blogs/architecture/feed/" text="AWS Architecture Blog" title="AWS Architecture Blog"></outline>
   <outline type="rss" xmlUrl="https://slack.engineering/feed/" text="Slack Engineering" title="Slack Engineering"></outline>
   <outline type="rss" xmlUrl="https://stripe.com/blog/feed.rss" text="Stripe Blog" title="Stripe Blog"></outline>
-  <outline type="rss" xmlUrl="https://github.com/ruanyf/weekly/commits/master.atom" text="ruanyf/weekly" title="ruanyf/weekly"></outline>
+  <outline type="rss" xmlUrl="https://www.ruanyifeng.com/blog/atom.xml" text="科技爱好者周刊" title="科技爱好者周刊"></outline>
  </body>
 </opml>

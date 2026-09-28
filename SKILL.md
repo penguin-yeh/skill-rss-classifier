@@ -266,6 +266,19 @@ its own prompt containing:
     to do it — pick from whatever the source has within the window (up to
     3, possibly fewer) and say plainly that they're here for coverage
     completeness rather than importance.
+- **Must-include weekly issues.** If the payload's `must_include_articles`
+  is non-empty, every article in it goes in that domain's numbered Top N
+  (it takes one of the N slots — never 小額外閱讀, never dropped), with a
+  full summary and its real date. These come from weekly-cadence sources
+  listed in `MUST_INCLUDE_SOURCES` in `prepare_domain_payloads.py`
+  (currently 科技爱好者周刊, i.e. github.com/ruanyf/weekly, fetched via
+  ruanyifeng.com/blog/atom.xml because github.com is unreachable from the
+  scheduled environment). They use a 7-day window instead of 24h because a
+  once-a-week issue would otherwise be missed six days out of seven; a
+  24h-window daily digest still shows the latest issue on each day of its
+  week. In Step 1.5, map 科技爱好者周刊 to the software-engineering/tech
+  domain. Verify in Step 3 that every `must_include_articles` link appears
+  in a Top N.
 - The exact output format below
 - An explicit instruction to write in Traditional Chinese
 

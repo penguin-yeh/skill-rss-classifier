@@ -68,6 +68,27 @@ from rss_classifier import _parse_article_datetime  # noqa: E402
 
 STALE_FLOOR_WINDOW = timedelta(days=7)
 
+# Weekly-cadence sources whose latest issue must always reach the report.
+# A daily 24h window misses a weekly issue on 6 days out of 7, so these use a
+# 7-day window and bypass pool caps. Value = title substring that marks a real
+# issue (the feed may also carry unrelated posts).
+MUST_INCLUDE_SOURCES = {
+    '科技爱好者周刊': '科技爱好者周刊',
+}
+MUST_INCLUDE_WINDOW = timedelta(days=7)
+
+
+def collect_must_include(articles: list[dict], now: datetime) -> list[dict]:
+    picks = []
+    for a in articles:
+        marker = MUST_INCLUDE_SOURCES.get(a.get('source_title', ''))
+        if marker is None or marker not in (a.get('title') or ''):
+            continue
+        d = _parse_article_datetime(a.get('date', ''))
+        if d is not None and d >= now - MUST_INCLUDE_WINDOW:
+            picks.append(a)
+    return picks
+
 
 def extract_objective_metric(article: dict):
     """Pull a verifiable engagement metric straight out of the RSS payload.
@@ -228,19 +249,24 @@ def main():
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    now = datetime.now(timezone.utc)
     print('文章數與分配的 Top N：')
     for name, content in domains.items():
         today = cap_with_source_floor(content.get('todays_articles', []), args.today_cap, args.per_source_floor)
         other = cap_with_source_floor(content.get('other_articles', []), args.other_cap, args.per_source_floor)
+        must = collect_must_include(
+            content.get('todays_articles', []) + content.get('other_articles', []), now)
         payload = {
             'domain': name,
             'top_n_to_select': alloc[name],
+            'must_include_articles': must,
             'todays_articles': today[:args.today_cap],
             'other_articles_sample': other[:args.other_cap],
         }
         fname = out_dir / f'{name.replace("/", "_")}.json'
         fname.write_text(json.dumps(payload, ensure_ascii=False, indent=2))
-        print(f'  {name}: {counts[name]} 篇 -> Top {alloc[name]}  ({fname})')
+        note = f'，必收 {len(must)} 篇' if must else ''
+        print(f'  {name}: {counts[name]} 篇 -> Top {alloc[name]}{note}  ({fname})')
 
 
 if __name__ == '__main__':
