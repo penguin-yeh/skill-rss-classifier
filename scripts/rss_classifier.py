@@ -129,6 +129,8 @@ def parse_rss_xml(xml_content: str) -> list[dict]:
         if date_elem is None:
             date_elem = elem.find('{http://www.w3.org/2005/Atom}published')
         if date_elem is None:
+            date_elem = elem.find('{http://www.w3.org/2005/Atom}updated')
+        if date_elem is None:
             date_elem = elem.find('{http://purl.org/rss/1.0/}date')
         item['date'] = date_elem.text if date_elem is not None else ''
 
