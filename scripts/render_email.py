@@ -167,8 +167,14 @@ def render_bonus_reading(bonus):
         title = esc(it["title"])
         link = html.escape(it["link"], quote=True)
         note = esc(it.get("note") or "")
+        date = esc(it.get("date") or "")
+        date_span = (
+            f' <span style="font-family:{FONT_MONO};font-size:10.5px;color:{SOFT_INK}">[{date}]</span>'
+            if date else ""
+        )
         rows.append(
             f'  ・<a href="{link}" style="color:{INK};text-decoration:underline">{title}</a>'
+            f'{date_span}'
             f' <span style="color:{SOFT_INK}">— {note}</span>'
         )
     rows_html = "<br>\n".join(rows)
@@ -365,7 +371,12 @@ PAYLOAD_SCHEMA_EXAMPLE = {
             "bonus_reading": {
                 "intro": "以下文章未進入 Top N，但為呈現來源完整報導樣貌一併收錄。",
                 "items": [
-                    {"title": "次要文章", "link": "https://example.com/b", "note": "湊足保底"}
+                    {
+                        "title": "次要文章",
+                        "link": "https://example.com/b",
+                        "date": "2026-08-16",
+                        "note": "湊足保底",
+                    }
                 ],
             },
         }
