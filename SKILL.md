@@ -89,6 +89,15 @@ report failed feeds to the user in your final summary (e.g. "r/programming
 let a fetch failure quietly masquerade as "this source was checked and had
 nothing."
 
+**If `todays_articles` is empty (excluding `failed_feeds`), stop here when
+running as a scheduled delivery job.** A quiet day where no source
+published anything new in the window is the expected, normal outcome, not
+a failure — don't force a report out of nothing. For a scheduled digest
+that delivers by email, skip Step 1.5 onward entirely and do not send
+anything that run; only proceed once there's at least one qualifying
+article. (This doesn't apply when a user is interactively asking for a
+one-off classification — then just report "沒有新文章" directly.)
+
 ## Step 1.5: Re-cluster by actual content — mandatory, not optional
 
 Do not dispatch subagents straight off the script's buckets. First sample
