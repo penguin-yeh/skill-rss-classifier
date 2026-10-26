@@ -68,25 +68,25 @@ from rss_classifier import _parse_article_datetime  # noqa: E402
 
 STALE_FLOOR_WINDOW = timedelta(days=7)
 
-# Weekly-cadence sources whose latest issue must always reach the report.
-# A daily 24h window misses a weekly issue on 6 days out of 7, so these use a
-# 7-day window and bypass pool caps. Value = title substring that marks a real
-# issue (the feed may also carry unrelated posts).
+# Sources whose issue, when it genuinely falls within today's window,
+# must land in the Top N rather than risk getting capped out by volume from
+# other sources in the same domain. This does NOT reach outside the normal
+# window — a source with nothing in today's window contributes nothing here,
+# same as any other source on a day it didn't publish. Value = title
+# substring that marks a real issue (the feed may also carry unrelated
+# posts).
 MUST_INCLUDE_SOURCES = {
     '科技爱好者周刊': '科技爱好者周刊',
 }
-MUST_INCLUDE_WINDOW = timedelta(days=7)
 
 
-def collect_must_include(articles: list[dict], now: datetime) -> list[dict]:
+def collect_must_include(todays_articles: list[dict]) -> list[dict]:
     picks = []
-    for a in articles:
+    for a in todays_articles:
         marker = MUST_INCLUDE_SOURCES.get(a.get('source_title', ''))
         if marker is None or marker not in (a.get('title') or ''):
             continue
-        d = _parse_article_datetime(a.get('date', ''))
-        if d is not None and d >= now - MUST_INCLUDE_WINDOW:
-            picks.append(a)
+        picks.append(a)
     return picks
 
 
@@ -249,13 +249,11 @@ def main():
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    now = datetime.now(timezone.utc)
     print('文章數與分配的 Top N：')
     for name, content in domains.items():
         today = cap_with_source_floor(content.get('todays_articles', []), args.today_cap, args.per_source_floor)
         other = cap_with_source_floor(content.get('other_articles', []), args.other_cap, args.per_source_floor)
-        must = collect_must_include(
-            content.get('todays_articles', []) + content.get('other_articles', []), now)
+        must = collect_must_include(content.get('todays_articles', []))
         payload = {
             'domain': name,
             'top_n_to_select': alloc[name],
