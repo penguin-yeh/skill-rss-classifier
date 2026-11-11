@@ -167,8 +167,10 @@ def render_bonus_reading(bonus):
         title = esc(it["title"])
         link = html.escape(it["link"], quote=True)
         note = esc(it.get("note") or "")
+        date = esc(it.get("date") or "")
         rows.append(
             f'  ・<a href="{link}" style="color:{INK};text-decoration:underline">{title}</a>'
+            f' <span style="font-family:{FONT_MONO};color:{SOFT_INK}">[{date}]</span>'
             f' <span style="color:{SOFT_INK}">— {note}</span>'
         )
     rows_html = "<br>\n".join(rows)
