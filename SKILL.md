@@ -92,9 +92,9 @@ nothing."
 **If `todays_articles` is empty (excluding `failed_feeds`), stop here when
 running as a scheduled delivery job.** A quiet day where no source
 published anything new in the window is the expected, normal outcome, not
-a failure — don't force a report out of nothing. For a scheduled digest
-that delivers by email, skip Step 1.5 onward entirely and do not send
-anything that run; only proceed once there's at least one qualifying
+a failure — don't force a report out of nothing. For a scheduled run, skip
+Step 1.5 onward entirely and do not publish anything that run (see
+"Delivery" below); only proceed once there's at least one qualifying
 article. (This doesn't apply when a user is interactively asking for a
 one-off classification — then just report "沒有新文章" directly.)
 
@@ -438,106 +438,64 @@ appears once per source row. If it's missing, the chart degraded back to a
 plain table somewhere in generation — a known failure mode — and must be
 rebuilt from the template, not patched around.
 
-**If delivery is via Gmail specifically, verify the sent message, not just
-the locally rendered file.** Gmail's inbound HTML sanitizer strips the
-`background:` shorthand property from inline `style=` attributes entirely
-(while leaving `background-color:`, `color:`, `border:`, etc. untouched) —
-this was caught in practice by fetching a just-sent message back via the
-Gmail MCP `get_message` tool and diffing its `htmlBody` against the local
-render, which showed every stamp color, tint box, and bar-chart fill gone
-(silently rendering as plain/white). `render_email.py` now emits
-`background-color:` everywhere for exactly this reason — never revert any
-of those declarations back to the `background:` shorthand, since that
-reintroduces this failure mode invisibly (the locally rendered file still
-looks correct; only the delivered Gmail copy is broken). After sending via
-Gmail, fetch the sent message back once and confirm `background-color:`
-survived (e.g. `grep -c "background-color:#" ` on the fetched `htmlBody`
-should roughly match the local file's count) rather than assuming the send
-was a faithful copy.
-
-**A second, related failure mode: a content block with no `background-color`
-of its own, relying only on inheriting one from an ancestor element, can
-render with the wrong (or no) background in dark-mode-aware clients** —
-caught in practice when the masthead title block, the excluded/failed-feed
-notice boxes, each numbered article row, each domain's outer wrapper, the
-tally-chart section, and the footer all lacked their own `background-color`
-(they only ever "borrowed" the outer card's `background-color:{CARD_BG}`
-via CSS inheritance). Gmail's dark-mode rendering forces its own dark
-background onto any block that doesn't explicitly declare one, so those
-specific regions rendered as blank/dark ("transparent") while the blocks
-that *did* declare their own background-color (stamp tags, 評語/新舊比較/
-小額外閱讀 tint boxes, the bar-chart fill) rendered fine — producing a
-patchy, inconsistent look rather than a uniformly broken one. The fix is
-structural, not cosmetic: every top-level content block in the template
-must declare its own `background-color:{CARD_BG}` rather than relying on
-inheritance, even though it renders identically in a light-mode/no-CSS-
-stripping context either way. If a new block type is ever added to
-`render_email.py`, give it an explicit `background-color:{CARD_BG}` (or
-whichever token is correct for that box) from the start.
-
-If the final report is delivered somewhere that renders markup (an HTML
-email, a webpage, an artifact) rather than as plain text, render each
+If the final report is delivered somewhere that renders markup (a webpage,
+an HTML email, an artifact) rather than as plain text, render each
 article's title as a clickable link to its real `link` — that's the whole
 point of carrying the link through the pipeline. Never invent a URL for an
 article that didn't have one.
 
-### HTML email delivery — rendered by code, not hand-written
+### Delivery — commit to penguin-yeh/daily-news, not email
 
-**Do not hand-write the delivery HTML/CSS. `scripts/render_email.py` owns
-all of it.** Earlier versions of this skill had the orchestrator write the
-final HTML by hand each run, following prose CSS rules ("use inline
-`style=`", "don't confuse a tint with a text color", a worked markup
-example to imitate, etc.). In practice that drifted silently between runs
-even with those rules spelled out — the outer card border and background
-disappeared in one delivered email, a bar chart's `background` got dropped
-in another, a `color:` got duplicated in a third — because regenerating the
-same CSS from natural-language instructions on every run gives it a chance
-to come out slightly different each time, and nothing catches that before
-the email is already sent. None of the visual design is a judgment call
-that needs an LLM re-deriving it, so it now lives as Python string
-literals in `scripts/render_email.py`, which cannot drift run to run
-unless a human edits the file.
+**As of 2026-11-15 this skill no longer delivers by email.** Earlier
+versions sent the rendered digest via Gmail (`scripts/render_email.py`,
+680px width, numbered list). The user has since set up
+[penguin-yeh/daily-news](https://github.com/penguin-yeh/daily-news) as a
+GitHub Pages site and asked that every run publish there instead — see
+that repo's `README.md` and `STYLE.md` for the authoritative delivery
+contract (820px width, Top N as a card grid, images when a real one
+exists). **Read `daily-news/STYLE.md` in full before rendering** — it is
+the actual spec `render_daily_news.py` implements, and if the two ever
+disagree, STYLE.md wins and the script needs fixing, not working around.
 
-Your job for this step is only to **assemble content into the payload
-JSON** the script expects — domain names, article counts, summaries,
-Top N items (title/link/date/summary, plus `objective_metric` and
-`tech_comparison` where they apply), 評語, optional 小額外閱讀, the
-source tally, `failed_feeds`, and the masthead meta lines. Run
-`python3 scripts/render_email.py --print-schema` to see the exact shape
-with example values, then write a payload file matching it (again, don't
-paste the full JSON into your own reply/transcript — write it straight to
-a file) and render:
+**Do not hand-write the delivery HTML/CSS.** Same reasoning as before: the
+visual design is not a judgment call an LLM should re-derive from prose
+each run. Two scripts own it:
+
+- `scripts/render_daily_news.py` — renders the payload JSON into the full
+  STYLE.md-compliant page. Payload shape is the same as `render_email.py`'s
+  (`--print-schema` on either script shows it; `render_daily_news.py`'s
+  schema additionally documents an optional `source` field per item, used
+  for the card's "[date] · 來源名" line — if omitted it's inferred from a
+  `【Source】` prefix already in the title). Self-checks its own output
+  (no `<style>`/`class=`, 820px width token, no duplicated `color:` in one
+  `style=`, correct `<title>`) before returning.
+- `scripts/fetch_article_images.py` — fetches and verifies each item's real
+  `og:image`/`twitter:image`, HEAD-checks it actually returns an image, and
+  drops any image URL that comes back for more than one article (the
+  signature of a shared placeholder — e.g. Google News's redirect
+  interstitial returns the *same* generic image for every article behind
+  it, and one run's Pragmatic Engineer fetch returned a 2023-dated stock
+  header image unrelated to the 2026-11 post; both got caught and dropped
+  by this exact rule). For a Hacker News Front Page item, pass its
+  `external_link` (set by `redirect_hn_link_to_discussion()` in
+  Step 1.6) as the fetch target, not the discussion-thread `link` — HN's
+  own page has no article image. Never substitute a logo, a placeholder,
+  or an AI-generated image when nothing real is found; STYLE.md explicitly
+  forbids all three, and a card with no image is a normal, expected output.
 
 ```bash
-python3 scripts/render_email.py /tmp/digest_payload.json --output /tmp/digest.html
+python3 scripts/render_daily_news.py --print-schema   # see the exact payload shape
+# ...assemble /tmp/digest_payload.json per that schema (don't paste the
+# full JSON into your own reply — write it straight to a file)...
+python3 scripts/fetch_article_images.py /tmp/digest_payload.json --output /tmp/images.json
+python3 scripts/render_daily_news.py /tmp/digest_payload.json \
+  --images /tmp/images.json --date YYYY-MM-DD --output /tmp/YYYY-MM-DD.html
 ```
 
-The script itself:
-
-- Assigns each domain's "stamp color" automatically by rotation in
-  payload order (5 built-in hues; extend `STAMP_COLOR_ROTATION` in the
-  script, don't repeat #1, if a report ever needs more than 5)
-- Computes the bar-chart percentages and always emits both `width` and
-  `background` on the bar cell — the "table with no visible bar" failure
-  mode is structurally impossible now, not just discouraged in prose
-- Keeps the tint/label/body-text colors for 評語, 新舊比較, and 小額外閱讀
-  boxes on separate, fixed properties — there's no way for a background
-  tint to land on `color:` by accident since each is a distinct Python
-  constant (`TINT_BOX_BG` vs `BODY_TEXT` etc.), not a value typed fresh
-  each run
-- Runs a self-check on its own output before returning (no `<style>`
-  block, card border/background present, no `style=` with a duplicated
-  `color:`) and raises instead of silently shipping a bad render
-
-If a run ever needs a genuinely new visual element (a new box type, a
-layout change), **edit `render_email.py`** rather than describing the
-change in prose for the orchestrator to reproduce free-hand — that keeps
-the fix permanent instead of a one-time patch that regresses next run.
-Sanity-check a real render before sending by opening the output file and
-independently grepping it for the same three things the self-check
-enforces, in case the payload data itself (not the template) is what's
-wrong — e.g. confirm the tally's bar `<td>` rows number one per source in
-`source_tally`.
+If a run ever needs a genuinely new visual element, **edit
+`render_daily_news.py`** (after updating `daily-news/STYLE.md` to match)
+rather than describing the change in prose for the orchestrator to
+reproduce free-hand.
 
 Tally sources across the whole report — main Top N **plus** each domain's
 🗞️ 小額外閱讀 combined — into the `source_tally` list the script turns into
@@ -548,6 +506,28 @@ worth double-checking before sending. The exception is a stale source (its
 most recent article is older than 7 days) — the floor is deliberately not
 enforced for those, so landing below 3 (or not appearing at all) is
 expected, not a bug.
+
+**Publishing**: clone `https://github.com/penguin-yeh/daily-news` (push
+access, not just read), write the rendered file as both `YYYY-MM-DD.html`
+and `index.html` (the latter is always a copy of the latest day — see
+`daily-news/README.md`), commit with message `Daily news YYYY-MM-DD`, and
+push to `main` (the repo's GitHub Pages deploy is legacy mode: it builds
+straight from `main`'s root on every push, no build step, no PR needed).
+If a session can only push to a `claude/*` branch, push there instead —
+`daily-news/.github/workflows/sync-main.yml` auto-syncs the newest dated
+page from any `claude/**` branch into `main` on push, so the content still
+lands without a human merging anything. Either way, after pushing, poll
+`https://penguin-yeh.github.io/daily-news/` (a cache-busting query string
+like `?v=YYYYMMDD` avoids a stale CDN hit) for an HTTP 200 to confirm the
+Pages deploy actually picked it up before considering the run done — a
+push succeeding doesn't by itself prove the site updated.
+
+**Do not send an email for this skill's output.** If a stale scheduled-task
+prompt (outside this repo, not something `git` here controls) still tells
+you to email the result, that instruction predates this change and should
+be treated as superseded by this section — publish to daily-news and skip
+Step 10-style Gmail sending entirely; flag the stale prompt to the user
+rather than silently honoring it.
 
 ## Input format
 
