@@ -15,19 +15,26 @@ The daily digest is **no longer delivered by email.** This section overrides eve
 
 1. **Never call any Gmail tool** (`send_message`, drafts, labels — nothing). Do not email the report, a summary, or a "failure notice" to anyone. A quiet day (no new articles) sends and publishes nothing.
 2. Render exactly as before (`scripts/render_email.py payload.json --output /tmp/digest.html` — the "晨間電訊" template, all inline CSS, no `<style>`).
-3. **Publish with the helper, one file per day, never overwriting a previous day:**
+3. **Find the publishing repo.** Reports are published into the **`penguin-yeh/daily-news`** repository (a public GitHub Pages site), under `reports/`. It is checked out next to this repo in the session — locate it with:
    ```bash
-   python3 scripts/publish_report.py /tmp/digest.html --date YYYY-MM-DD   # today's date in Asia/Taipei
+   for d in /home/user/daily-news "$(dirname "$PWD")/daily-news" /home/user/*/; do
+     git -C "$d" remote get-url origin 2>/dev/null | grep -qi 'penguin-yeh/daily-news' && echo "$d" && break
+   done
    ```
-   It writes `reports/YYYY-MM-DD.html` (a same-day re-run becomes `YYYY-MM-DD-2.html`, `-3`, … — it never replaces an existing report), rebuilds `reports/index.html` (the only file that is rewritten; it links every day), and refuses to write a report containing a `<style>` block or HTML-escaped tags (`&lt;div`). Its last stdout line is the new report path.
-4. `git status` first: no previously committed file under `reports/` may show as modified or deleted except `reports/index.html`. If one does, `git checkout -- <file>` it. Then:
+   If it is **not** checked out (and `add_repo` for `penguin-yeh/daily-news` with push access does not work), fall back to publishing into this repo's own `reports/` (omit `--reports-dir` below) — never fall back to email.
+4. **Publish with the helper, one file per day, never overwriting a previous day:**
+   ```bash
+   python3 scripts/publish_report.py /tmp/digest.html --date YYYY-MM-DD --reports-dir <daily-news checkout>/reports   # today's date in Asia/Taipei
+   ```
+   It writes `reports/YYYY-MM-DD.html` (a same-day re-run becomes `YYYY-MM-DD-2.html`, `-3`, … — it never replaces an existing report), rebuilds `reports/index.html` (the only file that is rewritten; it links every day), and refuses to write a report containing a `<style>` block or HTML-escaped tags (`&lt;div`). Its last stdout line is the new report path. The page is then at `https://penguin-yeh.github.io/daily-news/reports/YYYY-MM-DD.html`.
+   Then, **inside the daily-news checkout**: `git status` first — no previously committed file under `reports/` may show as modified or deleted except `reports/index.html` (if one does, `git checkout -- <file>` it). Then:
    ```bash
    git add reports/
    git commit -m "RSS 每日報報 YYYY-MM-DD"
-   git push origin HEAD:main      # if main is refused, push the current branch; a GitHub Action syncs reports/ into main
+   git push origin HEAD:main      # if main is refused, push the current branch; daily-news has a GitHub Action that syncs reports/ into main
    ```
    On a network error retry up to 4 times with backoff. If it still fails, stop and report the error — do not email as a fallback.
-5. The "verify the sent Gmail message" guidance below no longer applies; instead re-read the published `reports/YYYY-MM-DD.html` once and confirm it starts with `<!DOCTYPE html>`, has no `<style`, no `&lt;div`, and one tally bar row per source.
+5. The "verify the sent Gmail message" guidance below no longer applies; instead re-read the published report file once and confirm it starts with `<!DOCTYPE html>`, has no `<style`, no `&lt;div`, and one tally bar row per source.
 
 ## Why this is split into parse (script) + write (subagents)
 

@@ -4,6 +4,8 @@
 用法：
     python3 scripts/publish_report.py /tmp/digest.html --date 2026-11-15
     python3 scripts/publish_report.py --rebuild-index      # 只重建 reports/index.html
+    python3 scripts/publish_report.py /tmp/digest.html --date 2026-11-15 --reports-dir /path/to/daily-news/reports
+        # 發佈到另一個 repo（daily-news）的 reports/；也可用環境變數 RSS_REPORTS_DIR
 
 規則：
 - 每天一個檔案。**絕不覆蓋既有的日報**：若 reports/YYYY-MM-DD.html 已存在（同一天重跑），
@@ -15,13 +17,14 @@
 """
 import argparse
 import html
+import os
 import re
 import sys
 from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-REPORTS = ROOT / "reports"
+REPORTS = Path(os.environ.get("RSS_REPORTS_DIR") or ROOT / "reports")
 NAME_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})(?:-(\d+))?\.html$")
 WEEKDAYS = "一二三四五六日"
 
@@ -101,7 +104,11 @@ def main() -> None:
     ap.add_argument("html_file", nargs="?")
     ap.add_argument("--date", help="YYYY-MM-DD（台北時間的今天）")
     ap.add_argument("--rebuild-index", action="store_true")
+    ap.add_argument("--reports-dir", help="輸出資料夾（預設 ./reports；可指向 daily-news checkout 的 reports/）")
     a = ap.parse_args()
+    if a.reports_dir:
+        global REPORTS
+        REPORTS = Path(a.reports_dir).resolve()
     if a.rebuild_index and not a.html_file:
         print(rebuild_index())
         return
@@ -113,7 +120,7 @@ def main() -> None:
     out = free_name(a.date)
     out.write_text(doc, encoding="utf-8")
     rebuild_index()
-    print(out.relative_to(ROOT))
+    print(out)
 
 
 if __name__ == "__main__":
