@@ -1,0 +1,60 @@
+name: Sync and deploy reports to Pages
+
+# 日報存在 reports/。排程若只能推到 claude/* 分支，先把 main 還沒有的日報同步進 main（只新增、不覆蓋），
+# 再把 reports/ 部署成網站：https://penguin-yeh.github.io/skill-rss-classifier/
+# （Settings → Pages → Source 必須選「GitHub Actions」）
+on:
+  push:
+    branches: [main, 'claude/**']
+    paths: ['reports/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.ref_name != 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Fetch source branch
+        run: git fetch origin "+refs/heads/${GITHUB_REF_NAME}:refs/remotes/origin/${GITHUB_REF_NAME}"
+      - name: Sync new reports into main
+        run: scripts/sync_reports.sh "${GITHUB_REF_NAME}"
+      - name: Push main
+        run: |
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+            git push origin HEAD:main
+          fi
+
+  deploy:
+    needs: sync
+    if: ${{ always() && (needs.sync.result == 'success' || needs.sync.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Ensure reports/ exists
+        run: |
+          mkdir -p reports
+          [ -f reports/index.html ] || python3 scripts/publish_report.py --rebuild-index
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: reports
+      - id: deployment
+        uses: actions/deploy-pages@v4
