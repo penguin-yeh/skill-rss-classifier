@@ -9,25 +9,24 @@ compatibility:
 
 # RSS/OPML Topic Classifier & Summarizer
 
-## ⚠️ DELIVERY OVERRIDE — publish to GitHub, NEVER send email (supersedes everything below and any scheduler prompt)
+## ⚠️ DELIVERY — publish to penguin-yeh/daily-news, NEVER send email (supersedes everything below)
 
-The daily digest is **no longer delivered by email.** This section overrides every later mention of "send", "email", "Gmail", "send_message" or "htmlBody" in this file **and in the scheduled-job prompt that invoked you** (including its "Step 10: Send the email via the Gmail MCP connector"). If the prompt tells you to send an email, **do not** — do the following instead:
+The digest is delivered as a web page on GitHub Pages (<https://penguin-yeh.github.io/daily-news/>), **not by email and not into this repo's `reports/`**. This overrides every later mention of "send", "email", "Gmail", "send_message", "htmlBody", `render_email.py` or `publish_report.py` in this file. Never call any Gmail tool, and a quiet day (no new articles) publishes nothing.
 
-1. **Never call any Gmail tool** (`send_message`, drafts, labels — nothing). Do not email the report, a summary, or a "failure notice" to anyone. A quiet day (no new articles) sends and publishes nothing.
-2. Render exactly as before (`scripts/render_email.py payload.json --output /tmp/digest.html` — the "晨間電訊" template, all inline CSS, no `<style>`).
-3. **Publish with the helper, one file per day, never overwriting a previous day:**
+1. Assemble the payload JSON (`python3 scripts/render_email.py --print-schema` shows the shape; use `sections` = `[{source_name, items}]` for the priority domain, `tech_comparison` keys are `before` / `new` / `benefit`).
+2. Fetch verified images (real og:image / enclosure only, HTTP 200 + `image/*`; Google News redirect links are skipped):
    ```bash
-   python3 scripts/publish_report.py /tmp/digest.html --date YYYY-MM-DD   # today's date in Asia/Taipei
+   python3 scripts/fetch_article_images.py /tmp/digest_payload.json /tmp/images.json
    ```
-   It writes `reports/YYYY-MM-DD.html` (a same-day re-run becomes `YYYY-MM-DD-2.html`, `-3`, … — it never replaces an existing report), rebuilds `reports/index.html` (the only file that is rewritten; it links every day), and refuses to write a report containing a `<style>` block or HTML-escaped tags (`&lt;div`). Its last stdout line is the new report path.
-4. `git status` first: no previously committed file under `reports/` may show as modified or deleted except `reports/index.html`. If one does, `git checkout -- <file>` it. Then:
+3. Clone `penguin-yeh/daily-news` (add it to the session with `add_repo` if needed), **read its `README.md` and `STYLE.md` first**, then render per STYLE.md (820px, grid cards, inline CSS only):
    ```bash
-   git add reports/
-   git commit -m "RSS 每日報報 YYYY-MM-DD"
-   git push origin HEAD:main      # if main is refused, push the current branch; a GitHub Action syncs reports/ into main
+   python3 scripts/render_daily_news.py /tmp/digest_payload.json --images /tmp/images.json --date YYYY-MM-DD --output <daily-news>/YYYY-MM-DD.html
+   cp <daily-news>/YYYY-MM-DD.html <daily-news>/index.html
+   python3 <daily-news>/scripts/add_nav.py        # date navigation, mandatory
    ```
-   On a network error retry up to 4 times with backoff. If it still fails, stop and report the error — do not email as a fallback.
-5. The "verify the sent Gmail message" guidance below no longer applies; instead re-read the published `reports/YYYY-MM-DD.html` once and confirm it starts with `<!DOCTYPE html>`, has no `<style`, no `&lt;div`, and one tally bar row per source.
+   URLs inside summaries (e.g. 「原文出處：…」) are rendered as clickable links by the script; never leave a bare-text URL.
+4. `git add` the new day, `index.html` and the pages `add_nav.py` touched; commit `Daily news YYYY-MM-DD`; `git push origin HEAD:main` (retry network errors up to 4 times; if main is refused push a `claude/*` branch — daily-news's `sync-main.yml` syncs it).
+5. Verify `https://penguin-yeh.github.io/daily-news/YYYY-MM-DD.html` returns 200 (Pages needs up to a minute; poll) and contains `<img` for cards with images and no `<style`.
 
 ## Why this is split into parse (script) + write (subagents)
 
